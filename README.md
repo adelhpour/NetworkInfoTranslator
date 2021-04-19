@@ -1,6 +1,6 @@
 # SBMLplotlib
 
-SBMLplotlib is a python tool build on libsbnw library, a C/C++ library which can read, manipulate, and write SBML layout and redner information. Through matplotlib, it renders the biological network of an SBML model using either its already included or auto-generated layout and render information.
+SBMLplotlib is a python tool built on libsbnw library, a C/C++ library which can read, manipulate, and write SBML layout and redner information. Through matplotlib, it renders the biological network of an SBML model using either its already included or auto-generated layout and render information.
 
 ## How to Use
 The SBMLplotlib and its built dependencies for macOs andWindows are in `src/SBMLplotlib` directory. To become able to `import sbmlplotlib`, you need to add this directory to your `PYTHONPATH` and make sure you are making use of Python 3.6 and matplotlib 3.1.0 or newer.
