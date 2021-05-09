@@ -9,7 +9,7 @@ To use SBMLplotlib, you first need to:
 
 * Add the directory of the SBNE built Python libraries to your `PYTHONPATH`
 
-* Add the `<root directory of SBMLplotlib>/src/sbmlplotlib` to your `PYTHONPATH`
+* Add `<root directory of SBMLplotlib>/src/sbmlplotlib` to your `PYTHONPATH`
 
 And then you are able to `import sbmlplotlib` into your script, but make sure you are using Python 3.6 and matplotlib 3.1.0 or newer.
 
