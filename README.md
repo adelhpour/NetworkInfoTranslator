@@ -4,7 +4,6 @@ SBMLplotlib is a python tool built on <a href="https://github.com/adelhpour/SBNE
 
 ## How to Use
 
-### Build SBNE from source
 To use SBMLplotlib, you first need to:
 * Build SBNE from its <a href="https://github.com/adelhpour/SBNE">source</a> (follow the instructions in "Use Python bindings" section)
 
