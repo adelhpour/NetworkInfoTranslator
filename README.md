@@ -14,7 +14,7 @@ To use SBMLplotlib, you first need to:
 And then you are able to `import sbmlplotlib` into your script, but make sure you are using Python 3.6 and matplotlib 3.1.0 or newer.
 
 ## A simple script
-A simple script, which reads an SBML (xml) file and exports the rendered figure of its netwirk, is contained in `testcases` direcotory.
+A simple script, which reads an SBML (xml) file and exports the rendered figure of its network, is contained in `testcases` direcotory.
 
 ## Dependences
 Matplotlib, numPy, <a href="https://github.com/adelhpour/SBNE">SBNE</a>
