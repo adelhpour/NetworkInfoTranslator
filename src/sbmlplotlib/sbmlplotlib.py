@@ -1,4 +1,4 @@
-import _libsbnw
+import _libsbne as sbne
 import numpy as np
 import math
 import matplotlib
@@ -46,7 +46,7 @@ class SBMLRenderer:
 
     def load_sbml(self, filename):
         # get SBML document from and .xml model file
-        self.sbmlDocument = _libsbnw.gf_doc_readSBML(filename)
+        self.sbmlDocument = sbne.ne_doc_readSBML(filename)
 
         # get the layout info from the document
         self.load_layout_info()
@@ -56,15 +56,15 @@ class SBMLRenderer:
 
     def load_layout_info(self):
         global is_layout_modified
-        self.layoutInfo = _libsbnw.gf_doc_processLayoutInfo(self.sbmlDocument)
-        self.network = _libsbnw.gf_li_getNetwork(self.layoutInfo)
+        self.layoutInfo = sbne.ne_doc_processLayoutInfo(self.sbmlDocument)
+        self.network = sbne.ne_li_getNetwork(self.layoutInfo)
 
         if self.network:
             # if layout is not specified
-            if not _libsbnw.gf_net_isLayoutSpecified(self.network):
+            if not sbne.ne_net_isLayoutSpecified(self.network):
 
                 # implement layout algorithm
-                _libsbnw.gf_li_addLayoutFeaturesToNetowrk(self.layoutInfo)
+                sbne.ne_li_addLayoutFeaturesToNetowrk(self.layoutInfo)
 
                 # set the layout modification flag as true
                 is_layout_modified = True
@@ -73,57 +73,57 @@ class SBMLRenderer:
                 is_layout_modified = False
 
             # if now layout is specified
-            if _libsbnw.gf_net_isLayoutSpecified(self.network):
+            if sbne.ne_net_isLayoutSpecified(self.network):
                 # get compartments info
-                for c_index in range(_libsbnw.gf_net_getNumCompartments(self.network)):
+                for c_index in range(sbne.ne_net_getNumCompartments(self.network)):
                     compartment_ = {}
-                    if _libsbnw.gf_go_isSetGlyphId(_libsbnw.gf_net_getCompartment(self.network, c_index)):
-                        compartment_['compartmentGlyph'] = _libsbnw.gf_net_getCompartment(self.network, c_index)
-                        compartment_['id'] = _libsbnw.gf_go_getGlyphId(compartment_['compartmentGlyph'])
+                    if sbne.ne_go_isSetGlyphId(sbne.ne_net_getCompartment(self.network, c_index)):
+                        compartment_['compartmentGlyph'] = sbne.ne_net_getCompartment(self.network, c_index)
+                        compartment_['id'] = sbne.ne_go_getGlyphId(compartment_['compartmentGlyph'])
 
                         # if a text glyph is associated with this compartment
-                        if _libsbnw.gf_go_isSetText(compartment_['compartmentGlyph']):
+                        if sbne.ne_go_isSetText(compartment_['compartmentGlyph']):
                             compartment_['text'] =\
-                                {'textGlyph': _libsbnw.gf_go_getText(compartment_['compartmentGlyph'])}
-                            if _libsbnw.gf_go_isSetGlyphId(compartment_['text']['textGlyph']):
+                                {'textGlyph': sbne.ne_go_getText(compartment_['compartmentGlyph'])}
+                            if sbne.ne_go_isSetGlyphId(compartment_['text']['textGlyph']):
                                 compartment_['text']['id'] =\
-                                    _libsbnw.gf_go_getGlyphId(compartment_['text']['textGlyph'])
+                                    sbne.ne_go_getGlyphId(compartment_['text']['textGlyph'])
                         self.compartments.append(compartment_)
 
                 # get species info
-                for s_index in range(_libsbnw.gf_net_getNumSpecies(self.network)):
+                for s_index in range(sbne.ne_net_getNumSpecies(self.network)):
                     species_ = {}
-                    if _libsbnw.gf_go_isSetGlyphId(_libsbnw.gf_net_getSpecies(self.network, s_index)):
-                        species_['speciesGlyph'] = _libsbnw.gf_net_getSpecies(self.network, s_index)
-                        species_['id'] = _libsbnw.gf_go_getGlyphId(species_['speciesGlyph'])
+                    if sbne.ne_go_isSetGlyphId(sbne.ne_net_getSpecies(self.network, s_index)):
+                        species_['speciesGlyph'] = sbne.ne_net_getSpecies(self.network, s_index)
+                        species_['id'] = sbne.ne_go_getGlyphId(species_['speciesGlyph'])
 
                         # set the text associated with the species
                         species_['text'] = {}
-                        if _libsbnw.gf_go_isSetText(species_['speciesGlyph']):
-                            species_['text']['textGlyph'] = _libsbnw.gf_go_getText(species_['speciesGlyph'])
-                            if _libsbnw.gf_go_isSetGlyphId(species_['text']['textGlyph']):
-                                species_['text']['id'] = _libsbnw.gf_go_getGlyphId(species_['text']['textGlyph'])
+                        if sbne.ne_go_isSetText(species_['speciesGlyph']):
+                            species_['text']['textGlyph'] = sbne.ne_go_getText(species_['speciesGlyph'])
+                            if sbne.ne_go_isSetGlyphId(species_['text']['textGlyph']):
+                                species_['text']['id'] = sbne.ne_go_getGlyphId(species_['text']['textGlyph'])
                         self.species.append(species_)
 
                 # get reactions info
-                for r_index in range(_libsbnw.gf_net_getNumReactions(self.network)):
+                for r_index in range(sbne.ne_net_getNumReactions(self.network)):
                     reaction_ = {}
-                    if _libsbnw.gf_go_isSetGlyphId(_libsbnw.gf_net_getReaction(self.network, r_index)):
-                        reaction_['reactionGlyph'] = _libsbnw.gf_net_getReaction(self.network, r_index)
-                        reaction_['id'] = _libsbnw.gf_go_getGlyphId(reaction_['reactionGlyph'])
+                    if sbne.ne_go_isSetGlyphId(sbne.ne_net_getReaction(self.network, r_index)):
+                        reaction_['reactionGlyph'] = sbne.ne_net_getReaction(self.network, r_index)
+                        reaction_['id'] = sbne.ne_go_getGlyphId(reaction_['reactionGlyph'])
 
                         # get species reference info
                         species_references = []
-                        for sr_index in range(_libsbnw.gf_rxn_getNumSpeciesReferences(reaction_['reactionGlyph'])):
+                        for sr_index in range(sbne.ne_rxn_getNumSpeciesReferences(reaction_['reactionGlyph'])):
                             species_reference_ = {}
-                            if _libsbnw.gf_go_isSetGlyphId(_libsbnw.gf_rxn_getSpeciesReference(
+                            if sbne.ne_go_isSetGlyphId(sbne.ne_rxn_getSpeciesReference(
                                     reaction_['reactionGlyph'], sr_index)):
-                                species_reference_['sReferenceGlyph'] = _libsbnw.gf_rxn_getSpeciesReference(
+                                species_reference_['sReferenceGlyph'] = sbne.ne_rxn_getSpeciesReference(
                                     reaction_['reactionGlyph'], sr_index)
                                 species_reference_['id'] = \
-                                    _libsbnw.gf_go_getGlyphId(species_reference_['sReferenceGlyph'])
-                                if _libsbnw.gf_sr_isSetRole(species_reference_['sReferenceGlyph']):
-                                    species_reference_['role'] = _libsbnw.gf_sr_getRoleAsString(
+                                    sbne.ne_go_getGlyphId(species_reference_['sReferenceGlyph'])
+                                if sbne.ne_sr_isSetRole(species_reference_['sReferenceGlyph']):
+                                    species_reference_['role'] = sbne.ne_sr_getRoleAsString(
                                         species_reference_['sReferenceGlyph'])
                                 species_references.append(species_reference_)
                         reaction_['speciesReferences'] = species_references
@@ -132,14 +132,14 @@ class SBMLRenderer:
     def load_render_info(self):
         global is_render_modified
         if self.network:
-            self.renderInfo = _libsbnw.gf_doc_processRenderInfo(self.sbmlDocument)
-            self.veneer = _libsbnw.gf_ri_getVeneer(self.renderInfo)
+            self.renderInfo = sbne.ne_doc_processRenderInfo(self.sbmlDocument)
+            self.veneer = sbne.ne_ri_getVeneer(self.renderInfo)
 
             # if render is not specified
-            if not _libsbnw.gf_ven_isRenderSpecified(self.veneer):
+            if not sbne.ne_ven_isRenderSpecified(self.veneer):
 
                 # implement layout algorithm
-                _libsbnw.gf_ri_addDefaultRenderFeaturesToVeneer(self.renderInfo)
+                sbne.ne_ri_addDefaultRenderFeaturesToVeneer(self.renderInfo)
 
                 # set the render modification flag as true
                 is_render_modified = True
@@ -148,38 +148,38 @@ class SBMLRenderer:
                 is_render_modified = False
 
             # if now render is specified
-            if _libsbnw.gf_ven_isRenderSpecified(self.veneer):
+            if sbne.ne_ven_isRenderSpecified(self.veneer):
                 # get colors info
-                for c_index in range(_libsbnw.gf_ven_getNumColors(self.veneer)):
-                    color_ = {'colorDefinition': _libsbnw.gf_ven_getColor(self.veneer, c_index)}
-                    color_['id'] = _libsbnw.gf_ve_getId(color_['colorDefinition'])
+                for c_index in range(sbne.ne_ven_getNumColors(self.veneer)):
+                    color_ = {'colorDefinition': sbne.ne_ven_getColor(self.veneer, c_index)}
+                    color_['id'] = sbne.ne_ve_getId(color_['colorDefinition'])
                     colors.append(color_)
                     update_color_features(color_)
 
                 # get gradients info
-                for g_index in range(_libsbnw.gf_ven_getNumGradients(self.veneer)):
-                    gradient_ = {'gradientBase': _libsbnw.gf_ven_getGradient(self.veneer, g_index)}
-                    gradient_['id'] = _libsbnw.gf_ve_getId(gradient_['gradientBase'])
+                for g_index in range(sbne.ne_ven_getNumGradients(self.veneer)):
+                    gradient_ = {'gradientBase': sbne.ne_ven_getGradient(self.veneer, g_index)}
+                    gradient_['id'] = sbne.ne_ve_getId(gradient_['gradientBase'])
                     gradients.append(gradient_)
                     update_gradient_features(gradient_)
 
                 # get line ending info
-                for le_index in range(_libsbnw.gf_ven_getNumLineEndings(self.veneer)):
-                    line_ending_ = {'lineEnding': _libsbnw.gf_ven_getLineEnding(self.veneer, le_index)}
-                    line_ending_['id'] = _libsbnw.gf_ve_getId(line_ending_['lineEnding'])
+                for le_index in range(sbne.ne_ven_getNumLineEndings(self.veneer)):
+                    line_ending_ = {'lineEnding': sbne.ne_ven_getLineEnding(self.veneer, le_index)}
+                    line_ending_['id'] = sbne.ne_ve_getId(line_ending_['lineEnding'])
                     lineEndings.append(line_ending_)
                     update_line_ending_features(line_ending_)
 
                 # get compartments style from veneer
                 for c_index in range(len(self.compartments)):
                     self.compartments[c_index]['style'] = \
-                        _libsbnw.gf_ven_findStyle(self.veneer, self.compartments[c_index]['compartmentGlyph'])
+                        sbne.ne_ven_findStyle(self.veneer, self.compartments[c_index]['compartmentGlyph'])
 
                     # get text style from veneer
                     if 'text' in list(self.compartments[c_index].keys()) and \
                             "id" in list(self.compartments[c_index]['text'].keys()):
                         self.compartments[c_index]['text']['style'] =\
-                            _libsbnw.gf_ven_findStyle(self.veneer, self.compartments[c_index]['text']['textGlyph'])
+                            sbne.ne_ven_findStyle(self.veneer, self.compartments[c_index]['text']['textGlyph'])
 
                     # update compartment features
                     update_compartment_features(self.compartments[c_index], self.extents)
@@ -196,16 +196,16 @@ class SBMLRenderer:
                 # get species style from veneer
                 for s_index in range(len(self.species)):
                     self.species[s_index]['style'] =\
-                        _libsbnw.gf_ven_findStyle(self.veneer, self.species[s_index]['speciesGlyph'])
+                        sbne.ne_ven_findStyle(self.veneer, self.species[s_index]['speciesGlyph'])
 
                     # get text style from veneer
                     if 'text' in list(self.species[s_index].keys()):
                         if 'textGlyph' in list(self.species[s_index]['text'].keys()):
                             self.species[s_index]['text']['style'] =\
-                                _libsbnw.gf_ven_findStyle(self.veneer, self.species[s_index]['text']['textGlyph'])
+                                sbne.ne_ven_findStyle(self.veneer, self.species[s_index]['text']['textGlyph'])
                         else:
                             self.species[s_index]['text']['style'] = \
-                                _libsbnw.gf_ven_findStyle(self.veneer, 4)
+                                sbne.ne_ven_findStyle(self.veneer, None, 4)
 
                     # update species features
                     update_species_features(self.species[s_index])
@@ -222,7 +222,7 @@ class SBMLRenderer:
                 # get reactions style from veneer
                 for r_index in range(len(self.reactions)):
                     self.reactions[r_index]['style'] =\
-                        _libsbnw.gf_ven_findStyle(self.veneer, self.reactions[r_index]['reactionGlyph'])
+                        sbne.ne_ven_findStyle(self.veneer, self.reactions[r_index]['reactionGlyph'])
 
                     # update reaction features
                     update_reaction_features(self.reactions[r_index])
@@ -240,9 +240,9 @@ class SBMLRenderer:
                     if 'speciesReferences' in list(self.reactions[r_index].keys()):
                         for sr_index in range(len(self.reactions[r_index]['speciesReferences'])):
                             self.reactions[r_index]['speciesReferences'][sr_index]['style'] =\
-                                _libsbnw.gf_ven_findStyle(self.veneer,
-                                                          self.reactions[r_index]['speciesReferences']
-                                                          [sr_index]['sReferenceGlyph'])
+                                sbne.ne_ven_findStyle(self.veneer,
+                                                      self.reactions[r_index]['speciesReferences']
+                                                      [sr_index]['sReferenceGlyph'])
                             # update species reference features
                             update_species_reference_features(self.reactions[r_index]['speciesReferences'][sr_index])
 
@@ -273,8 +273,8 @@ def update_color_features(color):
     color['features'] = {}
     if color['colorDefinition']:
         # get color value
-        if _libsbnw.gf_clr_isSetValue(color['colorDefinition']):
-            color['features']['value'] = _libsbnw.gf_clr_getValue(color['colorDefinition'])
+        if sbne.ne_clr_isSetValue(color['colorDefinition']):
+            color['features']['value'] = sbne.ne_clr_getValue(color['colorDefinition'])
 
 
 def find_color_value(color_id, search_among_gradients=True):
@@ -302,99 +302,99 @@ def update_gradient_features(gradient):
     gradient['features'] = {}
     if gradient['gradientBase']:
         # get spread method
-        if _libsbnw.gf_grd_isSetSpreadMethod(gradient['gradientBase']):
-            gradient['features']['spreadMethod'] = _libsbnw.gf_grd_getSpreadMethod(gradient['gradientBase'])
+        if sbne.ne_grd_isSetSpreadMethod(gradient['gradientBase']):
+            gradient['features']['spreadMethod'] = sbne.ne_grd_getSpreadMethod(gradient['gradientBase'])
 
         # get gradient stops
         stops_ = []
-        for s_index in range(_libsbnw.gf_grd_getNumStops(gradient['gradientBase'])):
-            stop_ = {'gradientStop': _libsbnw.gf_grd_getStop(gradient['gradientBase'], s_index)}
+        for s_index in range(sbne.ne_grd_getNumStops(gradient['gradientBase'])):
+            stop_ = {'gradientStop': sbne.ne_grd_getStop(gradient['gradientBase'], s_index)}
 
             # get offset
-            if _libsbnw.gf_gstp_isSetOffset(stop_['gradientStop']):
+            if sbne.ne_gstp_isSetOffset(stop_['gradientStop']):
                 stop_['offset'] =\
-                    {'rel': _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_gstp_getOffset(stop_['gradientStop']))}
+                    {'rel': sbne.ne_rav_getRelativeValue(sbne.ne_gstp_getOffset(stop_['gradientStop']))}
 
             # get stop color
-            if _libsbnw.gf_gstp_isSetColor(stop_['gradientStop']):
-                stop_['color'] = _libsbnw.gf_gstp_getColor(stop_['gradientStop'])
+            if sbne.ne_gstp_isSetColor(stop_['gradientStop']):
+                stop_['color'] = sbne.ne_gstp_getColor(stop_['gradientStop'])
 
             stops_.append(stop_)
 
         gradient['features']['stops'] = stops_
 
         # for linear gradient
-        if _libsbnw.gf_grd_isLinearGradient(gradient['gradientBase']):
+        if sbne.ne_grd_isLinearGradient(gradient['gradientBase']):
             # get start
             gradient['features']['start'] =\
                 {'x': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getX1(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getX1(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getX1(gradient['gradientBase']))},
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getX1(gradient['gradientBase']))},
                  'y': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getY1(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getY1(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getY1(gradient['gradientBase']))}}
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getY1(gradient['gradientBase']))}}
 
             # get end
             gradient['features']['end'] = \
                 {'x': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getX2(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getX2(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getX2(gradient['gradientBase']))},
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getX2(gradient['gradientBase']))},
                  'y': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getY2(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getY2(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getY2(gradient['gradientBase']))}}
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getY2(gradient['gradientBase']))}}
 
         # for radial gradient
-        elif _libsbnw.gf_grd_isLinearGradient(gradient['gradientBase']):
+        elif sbne.ne_grd_isLinearGradient(gradient['gradientBase']):
             # get center
             gradient['features']['center'] = \
                 {'x': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getCx(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getCx(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getCx(gradient['gradientBase']))},
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getCx(gradient['gradientBase']))},
                  'y': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getCy(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getCy(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getCy(gradient['gradientBase']))}}
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getCy(gradient['gradientBase']))}}
 
             # get focal
             gradient['features']['focalPoint'] = \
                 {'x': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getFx(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getFx(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getFx(gradient['gradientBase']))},
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getFx(gradient['gradientBase']))},
                  'y': {'abs':
-                       _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getFy(gradient['gradientBase'])),
+                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getFy(gradient['gradientBase'])),
                        'rel':
-                       _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getFy(gradient['gradientBase']))}}
+                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getFy(gradient['gradientBase']))}}
 
             # get radius
             gradient['features']['radius'] =\
-                {'abs': _libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_grd_getR(gradient['gradientBase'])),
-                 'rel': _libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_grd_getR(gradient['gradientBase']))}
+                {'abs': sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getR(gradient['gradientBase'])),
+                 'rel': sbne.ne_rav_getRelativeValue(sbne.ne_grd_getR(gradient['gradientBase']))}
 
 
 def update_line_ending_features(line_ending):
     line_ending['features'] = {}
     if line_ending['lineEnding']:
         # get bounding box features
-        if _libsbnw.gf_le_isSetBoundingBox(line_ending['lineEnding']):
-            bbox = _libsbnw.gf_le_getBoundingBox(line_ending['lineEnding'])
-            line_ending['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox), 'y': _libsbnw.gf_bb_getY(bbox),
-                                                      'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                      'height': _libsbnw.gf_bb_getHeight(bbox)}
+        if sbne.ne_le_isSetBoundingBox(line_ending['lineEnding']):
+            bbox = sbne.ne_le_getBoundingBox(line_ending['lineEnding'])
+            line_ending['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
+                                                      'width': sbne.ne_bb_getWidth(bbox),
+                                                      'height': sbne.ne_bb_getHeight(bbox)}
 
         # get group features
-        if _libsbnw.gf_le_isSetGroup(line_ending['lineEnding']):
+        if sbne.ne_le_isSetGroup(line_ending['lineEnding']):
             line_ending['features']['graphicalShape'] = \
-                get_graphical_shape_features(_libsbnw.gf_le_getGroup(line_ending['lineEnding']))
+                get_graphical_shape_features(sbne.ne_le_getGroup(line_ending['lineEnding']))
 
         # get enable rotation
-        if _libsbnw.gf_le_isSetEnableRotation(line_ending['lineEnding']):
-            line_ending['features']['enableRotation'] = _libsbnw.gf_le_getEnableRotation(line_ending['lineEnding'])
+        if sbne.ne_le_isSetEnableRotation(line_ending['lineEnding']):
+            line_ending['features']['enableRotation'] = sbne.ne_le_getEnableRotation(line_ending['lineEnding'])
 
 
 def find_line_ending(line_ending):
@@ -407,11 +407,11 @@ def update_compartment_features(compartment, extents):
     compartment['features'] = {}
     if compartment['compartmentGlyph']:
         # get bounding box features
-        if _libsbnw.gf_go_isSetBoundingBox(compartment['compartmentGlyph']):
-            bbox = _libsbnw.gf_go_getBoundingBox(compartment['compartmentGlyph'])
-            compartment['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox), 'y': _libsbnw.gf_bb_getY(bbox),
-                                                      'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                      'height': _libsbnw.gf_bb_getHeight(bbox)}
+        if sbne.ne_go_isSetBoundingBox(compartment['compartmentGlyph']):
+            bbox = sbne.ne_go_getBoundingBox(compartment['compartmentGlyph'])
+            compartment['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
+                                                      'width': sbne.ne_bb_getWidth(bbox),
+                                                      'height': sbne.ne_bb_getHeight(bbox)}
 
             extents['minX'] = min(extents['minX'], compartment['features']['boundingBox']['x'])
             extents['maxX'] = max(extents['maxX'], compartment['features']['boundingBox']['x'] +
@@ -421,164 +421,164 @@ def update_compartment_features(compartment, extents):
                                   compartment['features']['boundingBox']['height'])
 
         # get group features
-        if 'style' in list(compartment.keys()) and _libsbnw.gf_style_isSetGroup(compartment['style']):
+        if 'style' in list(compartment.keys()) and sbne.ne_stl_isSetGroup(compartment['style']):
             compartment['features']['graphicalShape'] =\
-                get_graphical_shape_features(_libsbnw.gf_style_getGroup(compartment['style']))
+                get_graphical_shape_features(sbne.ne_stl_getGroup(compartment['style']))
 
         # get text features
         if 'text' in list(compartment.keys()) and 'id' in list(compartment['text'].keys()):
             # get plain text
             if 'id' in list(compartment['text'].keys())\
-                    and _libsbnw.gf_gtxt_isSetPlainText(compartment['text']['textGlyph']):
+                    and sbne.ne_gtxt_isSetPlainText(compartment['text']['textGlyph']):
                 compartment['text']['features']['plainText'] =\
-                    _libsbnw.gf_gtxt_getPlainText(compartment['text']['textGlyph'])
-            elif _libsbnw.gf_ne_isSetName(compartment['speciesGlyph']):
-                compartment['text']['features']['plainText'] = _libsbnw.gf_ne_getName(compartment['speciesGlyph'])
+                    sbne.ne_gtxt_getPlainText(compartment['text']['textGlyph'])
+            elif sbne.ne_ne_isSetName(compartment['speciesGlyph']):
+                compartment['text']['features']['plainText'] = sbne.ne_ne_getName(compartment['speciesGlyph'])
             else:
-                compartment['text']['features']['plainText'] = _libsbnw.gf_ne_getId(compartment['speciesGlyph'])
+                compartment['text']['features']['plainText'] = sbne.ne_ne_getId(compartment['speciesGlyph'])
 
             # get bounding box features of the text glyph
-            if _libsbnw.gf_go_isSetBoundingBox(compartment['text']['textGlyph']):
-                bbox = _libsbnw.gf_go_getBoundingBox(compartment['text']['textGlyph'])
-                compartment['text']['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox),
-                                                                  'y': _libsbnw.gf_bb_getY(bbox),
-                                                                  'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                                  'height': _libsbnw.gf_bb_getHeight(bbox)}
+            if sbne.ne_go_isSetBoundingBox(compartment['text']['textGlyph']):
+                bbox = sbne.ne_go_getBoundingBox(compartment['text']['textGlyph'])
+                compartment['text']['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox),
+                                                                  'y': sbne.ne_bb_getY(bbox),
+                                                                  'width': sbne.ne_bb_getWidth(bbox),
+                                                                  'height': sbne.ne_bb_getHeight(bbox)}
 
             # get group features
             if 'style' in list(compartment['text'].keys())\
-                    and _libsbnw.gf_style_isSetGroup(compartment['text']['style']):
+                    and sbne.ne_stl_isSetGroup(compartment['text']['style']):
                 compartment['text']['features']['graphicalText'] =\
-                    get_text_features(_libsbnw.gf_style_getGroup(compartment['text']['style']))
+                    get_text_features(sbne.ne_stl_getGroup(compartment['text']['style']))
 
 
 def update_species_features(species):
     species['features'] = {}
     if species['speciesGlyph']:
         # get bounding box features
-        if _libsbnw.gf_go_isSetBoundingBox(species['speciesGlyph']):
-            bbox = _libsbnw.gf_go_getBoundingBox(species['speciesGlyph'])
-            species['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox), 'y': _libsbnw.gf_bb_getY(bbox),
-                                                  'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                  'height': _libsbnw.gf_bb_getHeight(bbox)}
+        if sbne.ne_go_isSetBoundingBox(species['speciesGlyph']):
+            bbox = sbne.ne_go_getBoundingBox(species['speciesGlyph'])
+            species['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
+                                                  'width': sbne.ne_bb_getWidth(bbox),
+                                                  'height': sbne.ne_bb_getHeight(bbox)}
 
         # get group features
-        if 'style' in list(species.keys()) and _libsbnw.gf_style_isSetGroup(species['style']):
+        if 'style' in list(species.keys()) and sbne.ne_stl_isSetGroup(species['style']):
             species['features']['graphicalShape'] = \
-                get_graphical_shape_features(_libsbnw.gf_style_getGroup(species['style']))
+                get_graphical_shape_features(sbne.ne_stl_getGroup(species['style']))
 
         # get text features
         if 'text' in list(species.keys()):
             species['text']['features'] = {}
             # get plain text
-            if 'id' in list(species['text'].keys()) and _libsbnw.gf_gtxt_isSetPlainText(species['text']['textGlyph']):
-                species['text']['features']['plainText'] = _libsbnw.gf_gtxt_getPlainText(species['text']['textGlyph'])
-            elif _libsbnw.gf_ne_isSetName(species['speciesGlyph']):
-                species['text']['features']['plainText'] = _libsbnw.gf_ne_getName(species['speciesGlyph'])
+            if 'id' in list(species['text'].keys()) and sbne.ne_gtxt_isSetPlainText(species['text']['textGlyph']):
+                species['text']['features']['plainText'] = sbne.ne_gtxt_getPlainText(species['text']['textGlyph'])
+            elif sbne.ne_ne_isSetName(species['speciesGlyph']):
+                species['text']['features']['plainText'] = sbne.ne_ne_getName(species['speciesGlyph'])
             else:
-                species['text']['features']['plainText'] = _libsbnw.gf_ne_getId(species['speciesGlyph'])
+                species['text']['features']['plainText'] = sbne.ne_ne_getId(species['speciesGlyph'])
 
             # get bounding box features of the text glyph
-            if 'id' in list(species['text'].keys()) and _libsbnw.gf_go_isSetBoundingBox(species['text']['textGlyph']):
-                bbox = _libsbnw.gf_go_getBoundingBox(species['text']['textGlyph'])
-                species['text']['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox),
-                                                              'y': _libsbnw.gf_bb_getY(bbox),
-                                                              'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                              'height': _libsbnw.gf_bb_getHeight(bbox)}
+            if 'id' in list(species['text'].keys()) and sbne.ne_go_isSetBoundingBox(species['text']['textGlyph']):
+                bbox = sbne.ne_go_getBoundingBox(species['text']['textGlyph'])
+                species['text']['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox),
+                                                              'y': sbne.ne_bb_getY(bbox),
+                                                              'width': sbne.ne_bb_getWidth(bbox),
+                                                              'height': sbne.ne_bb_getHeight(bbox)}
             # get bounding box features of the species glyph
             else:
                 species['text']['features']['boundingBox'] = species['features']['boundingBox']
 
             # get group features
             if 'style' in list(species['text'].keys()) \
-                    and _libsbnw.gf_style_isSetGroup(species['text']['style']):
+                    and sbne.ne_stl_isSetGroup(species['text']['style']):
                 species['text']['features']['graphicalText'] = \
-                    get_text_features(_libsbnw.gf_style_getGroup(species['text']['style']))
+                    get_text_features(sbne.ne_stl_getGroup(species['text']['style']))
 
             # fit species bounding box to its features
             if fit_species_bbox(species, species['text']['features']):
-                bbox = _libsbnw.gf_go_getBoundingBox(species['speciesGlyph'])
-                species['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox), 'y': _libsbnw.gf_bb_getY(bbox),
-                                                      'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                      'height': _libsbnw.gf_bb_getHeight(bbox)}
-                species['text']['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox),
-                                                              'y': _libsbnw.gf_bb_getY(bbox),
-                                                              'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                              'height': _libsbnw.gf_bb_getHeight(bbox)}
+                bbox = sbne.ne_go_getBoundingBox(species['speciesGlyph'])
+                species['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
+                                                      'width': sbne.ne_bb_getWidth(bbox),
+                                                      'height': sbne.ne_bb_getHeight(bbox)}
+                species['text']['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox),
+                                                              'y': sbne.ne_bb_getY(bbox),
+                                                              'width': sbne.ne_bb_getWidth(bbox),
+                                                              'height': sbne.ne_bb_getHeight(bbox)}
 
 
 def update_reaction_features(reaction):
     reaction['features'] = {}
     if reaction['reactionGlyph']:
         # get curve features
-        if _libsbnw.gf_rxn_isSetCurve(reaction['reactionGlyph']):
-            crv = _libsbnw.gf_rxn_getCurve(reaction['reactionGlyph'])
+        if sbne.ne_rxn_isSetCurve(reaction['reactionGlyph']):
+            crv = sbne.ne_rxn_getCurve(reaction['reactionGlyph'])
 
-            if _libsbnw.gf_crv_getNumElements(crv):
+            if sbne.ne_crv_getNumElements(crv):
                 curve_ = []
-                for e_index in range(_libsbnw.gf_crv_getNumElements(crv)):
-                    element = _libsbnw.gf_crv_getElement(crv, e_index)
-                    start_point = _libsbnw.gf_ls_getStart(element)
-                    end_point = _libsbnw.gf_ls_getEnd(element)
+                for e_index in range(sbne.ne_crv_getNumElements(crv)):
+                    element = sbne.ne_crv_getElement(crv, e_index)
+                    start_point = sbne.ne_ls_getStart(element)
+                    end_point = sbne.ne_ls_getEnd(element)
                     if start_point and end_point:
-                        element_ = {'startX': _libsbnw.gf_point_getX(start_point),
-                                    'startY': _libsbnw.gf_point_getY(start_point),
-                                    'endX': _libsbnw.gf_point_getX(end_point),
-                                    'endY': _libsbnw.gf_point_getY(end_point)}
-                        if _libsbnw.gf_ls_isCubicBezier(element):
-                            base_point1 = _libsbnw.gf_cb_getBasePoint1(element)
-                            base_point2 = _libsbnw.gf_cb_getBasePoint2(element)
+                        element_ = {'startX': sbne.ne_point_getX(start_point),
+                                    'startY': sbne.ne_point_getY(start_point),
+                                    'endX': sbne.ne_point_getX(end_point),
+                                    'endY': sbne.ne_point_getY(end_point)}
+                        if sbne.ne_ls_isCubicBezier(element):
+                            base_point1 = sbne.ne_cb_getBasePoint1(element)
+                            base_point2 = sbne.ne_cb_getBasePoint2(element)
                             if base_point1 and base_point2:
-                                element_["basePoint1X"] = _libsbnw.gf_point_getX(base_point1)
-                                element_["basePoint1Y"] = _libsbnw.gf_point_getY(base_point1)
-                                element_["basePoint2X"] = _libsbnw.gf_point_getX(base_point2)
-                                element_["basePoint1Y"] = _libsbnw.gf_point_getY(base_point2)
+                                element_["basePoint1X"] = sbne.ne_point_getX(base_point1)
+                                element_["basePoint1Y"] = sbne.ne_point_getY(base_point1)
+                                element_["basePoint2X"] = sbne.ne_point_getX(base_point2)
+                                element_["basePoint1Y"] = sbne.ne_point_getY(base_point2)
                         curve_.append(element_)
                 reaction['features']['curve'] = curve_
 
         # get bounding box features
-        elif _libsbnw.gf_go_isSetBoundingBox(reaction['reactionGlyph']):
-            bbox = _libsbnw.gf_go_getBoundingBox(reaction['reactionGlyph'])
-            reaction['features']['boundingBox'] = {'x': _libsbnw.gf_bb_getX(bbox), 'y': _libsbnw.gf_bb_getY(bbox),
-                                                   'width': _libsbnw.gf_bb_getWidth(bbox),
-                                                   'height': _libsbnw.gf_bb_getHeight(bbox)}
+        elif sbne.ne_go_isSetBoundingBox(reaction['reactionGlyph']):
+            bbox = sbne.ne_go_getBoundingBox(reaction['reactionGlyph'])
+            reaction['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
+                                                   'width': sbne.ne_bb_getWidth(bbox),
+                                                   'height': sbne.ne_bb_getHeight(bbox)}
 
         # get group features
-        if 'style' in list(reaction.keys()) and _libsbnw.gf_style_isSetGroup(reaction['style']):
+        if 'style' in list(reaction.keys()) and sbne.ne_stl_isSetGroup(reaction['style']):
             if 'curve' in list(reaction['features'].keys()):
                 reaction['features']['graphicalCurve'] =\
-                    get_curve_features(_libsbnw.gf_style_getGroup(reaction['style']))
+                    get_curve_features(sbne.ne_stl_getGroup(reaction['style']))
             elif 'boundingBox' in list(reaction['features'].keys()):
                 reaction['features']['graphicalShape'] =\
-                    get_graphical_shape_features(_libsbnw.gf_style_getGroup(reaction['style']))
+                    get_graphical_shape_features(sbne.ne_stl_getGroup(reaction['style']))
 
 
 def update_species_reference_features(species_reference):
     species_reference['features'] = {}
     if species_reference['sReferenceGlyph']:
         # get curve features
-        if _libsbnw.gf_sr_isSetCurve(species_reference['sReferenceGlyph']):
-            crv = _libsbnw.gf_sr_getCurve(species_reference['sReferenceGlyph'])
+        if sbne.ne_sr_isSetCurve(species_reference['sReferenceGlyph']):
+            crv = sbne.ne_sr_getCurve(species_reference['sReferenceGlyph'])
 
-            if _libsbnw.gf_crv_getNumElements(crv):
+            if sbne.ne_crv_getNumElements(crv):
                 curve_ = []
-                for e_index in range(_libsbnw.gf_crv_getNumElements(crv)):
-                    element = _libsbnw.gf_crv_getElement(crv, e_index)
-                    start_point = _libsbnw.gf_ls_getStart(element)
-                    end_point = _libsbnw.gf_ls_getEnd(element)
+                for e_index in range(sbne.ne_crv_getNumElements(crv)):
+                    element = sbne.ne_crv_getElement(crv, e_index)
+                    start_point = sbne.ne_ls_getStart(element)
+                    end_point = sbne.ne_ls_getEnd(element)
                     if start_point and end_point:
-                        element_ = {'startX': _libsbnw.gf_point_getX(start_point),
-                                    'startY': _libsbnw.gf_point_getY(start_point),
-                                    'endX': _libsbnw.gf_point_getX(end_point),
-                                    'endY': _libsbnw.gf_point_getY(end_point)}
-                        if _libsbnw.gf_ls_isCubicBezier(element):
-                            base_point1 = _libsbnw.gf_cb_getBasePoint1(element)
-                            base_point2 = _libsbnw.gf_cb_getBasePoint2(element)
+                        element_ = {'startX': sbne.ne_point_getX(start_point),
+                                    'startY': sbne.ne_point_getY(start_point),
+                                    'endX': sbne.ne_point_getX(end_point),
+                                    'endY': sbne.ne_point_getY(end_point)}
+                        if sbne.ne_ls_isCubicBezier(element):
+                            base_point1 = sbne.ne_cb_getBasePoint1(element)
+                            base_point2 = sbne.ne_cb_getBasePoint2(element)
                             if base_point1 and base_point2:
-                                element_['basePoint1X'] = _libsbnw.gf_point_getX(base_point1)
-                                element_['basePoint1Y'] = _libsbnw.gf_point_getY(base_point1)
-                                element_['basePoint2X'] = _libsbnw.gf_point_getX(base_point2)
-                                element_['basePoint2Y'] = _libsbnw.gf_point_getY(base_point2)
+                                element_['basePoint1X'] = sbne.ne_point_getX(base_point1)
+                                element_['basePoint1Y'] = sbne.ne_point_getY(base_point1)
+                                element_['basePoint2X'] = sbne.ne_point_getX(base_point2)
+                                element_['basePoint2Y'] = sbne.ne_point_getY(base_point2)
 
                         # set start point and slope
                         if e_index == 0:
@@ -598,7 +598,7 @@ def update_species_reference_features(species_reference):
                                                element_['startX'] - element_['endX'])
 
                         # set end point and slope
-                        if e_index == _libsbnw.gf_crv_getNumElements(crv) - 1:
+                        if e_index == sbne.ne_crv_getNumElements(crv) - 1:
                             species_reference['features']['endPoint'] = {'x': element_['endX'],
                                                                          'y': element_['endY']}
 
@@ -617,58 +617,58 @@ def update_species_reference_features(species_reference):
                 species_reference['features']['curve'] = curve_
 
         # get group features
-        if 'style' in list(species_reference.keys()) and _libsbnw.gf_style_isSetGroup(species_reference['style']):
+        if 'style' in list(species_reference.keys()) and sbne.ne_stl_isSetGroup(species_reference['style']):
             species_reference['features']['graphicalCurve'] =\
-                get_curve_features(_libsbnw.gf_style_getGroup(species_reference['style']))
+                get_curve_features(sbne.ne_stl_getGroup(species_reference['style']))
 
 
 def get_graphical_shape_features(group):
     graphical_shape_features = {}
     if group:
         # get stroke color
-        if _libsbnw.gf_grp_isSetStrokeColor(group):
-            graphical_shape_features['strokeColor'] = _libsbnw.gf_grp_getStrokeColor(group)
+        if sbne.ne_grp_isSetStrokeColor(group):
+            graphical_shape_features['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
 
         # get stroke width
-        if _libsbnw.gf_grp_isSetStrokeWidth(group):
-            graphical_shape_features['strokeWidth'] = _libsbnw.gf_grp_getStrokeWidth(group)
+        if sbne.ne_grp_isSetStrokeWidth(group):
+            graphical_shape_features['strokeWidth'] = sbne.ne_grp_getStrokeWidth(group)
 
         # get stroke dash array
-        if _libsbnw.gf_grp_isSetStrokeDashArray(group):
+        if sbne.ne_grp_isSetStrokeDashArray(group):
             dash_array = []
-            for d_index in range(_libsbnw.gf_grp_getNumStrokeDashes(group)):
-                dash_array.append(_libsbnw.gf_grp_getStrokeDash(group, d_index))
+            for d_index in range(sbne.ne_grp_getNumStrokeDashes(group)):
+                dash_array.append(sbne.ne_grp_getStrokeDash(group, d_index))
             graphical_shape_features['strokeDashArray'] = tuple(dash_array)
 
         # get fill color
-        if _libsbnw.gf_grp_isSetFillColor(group):
-            graphical_shape_features['fillColor'] = _libsbnw.gf_grp_getFillColor(group)
+        if sbne.ne_grp_isSetFillColor(group):
+            graphical_shape_features['fillColor'] = sbne.ne_grp_getFillColor(group)
 
         # get fill rule
-        if _libsbnw.gf_grp_isSetFillRule(group):
-            graphical_shape_features['fillRule'] = _libsbnw.gf_grp_getFillRule(group)
+        if sbne.ne_grp_isSetFillRule(group):
+            graphical_shape_features['fillRule'] = sbne.ne_grp_getFillRule(group)
 
         # get geometric shapes
-        if _libsbnw.gf_grp_getNumGeometricShapes(group):
+        if sbne.ne_grp_getNumGeometricShapes(group):
             geometric_shapes = []
-            for gs_index in range(_libsbnw.gf_grp_getNumGeometricShapes(group)):
-                gs = _libsbnw.gf_grp_getGeometricShape(group, gs_index)
+            for gs_index in range(sbne.ne_grp_getNumGeometricShapes(group)):
+                gs = sbne.ne_grp_getGeometricShape(group, gs_index)
                 geometric_shape_features = {}
 
                 # get geometric shape general features
                 # get stroke color
-                if _libsbnw.gf_gs_isSetStrokeColor(gs):
-                    geometric_shape_features['strokeColor'] = _libsbnw.gf_gs_getStrokeColor(gs)
+                if sbne.ne_gs_isSetStrokeColor(gs):
+                    geometric_shape_features['strokeColor'] = sbne.ne_gs_getStrokeColor(gs)
 
                 # get stroke width
-                if _libsbnw.gf_gs_isSetStrokeWidth(gs):
-                    geometric_shape_features['strokeWidth'] = _libsbnw.gf_gs_getStrokeWidth(gs)
+                if sbne.ne_gs_isSetStrokeWidth(gs):
+                    geometric_shape_features['strokeWidth'] = sbne.ne_gs_getStrokeWidth(gs)
 
                 # get stroke dash array
-                if _libsbnw.gf_gs_isSetStrokeDashArray(gs):
+                if sbne.ne_gs_isSetStrokeDashArray(gs):
                     dash_array = []
-                    for d_index in range(_libsbnw.gf_gs_getNumStrokeDashes(gs)):
-                        dash_array.append(_libsbnw.gf_gs_getStrokeDash(gs, d_index))
+                    for d_index in range(sbne.ne_gs_getNumStrokeDashes(gs)):
+                        dash_array.append(sbne.ne_gs_getStrokeDash(gs, d_index))
                     geometric_shape_features['strokeDashArray'] = tuple(dash_array)
 
                 # get geometric shape specific features
@@ -685,26 +685,26 @@ def get_curve_features(group):
     curve_features = {}
     if group:
         # get stroke color
-        if _libsbnw.gf_grp_isSetStrokeColor(group):
-            curve_features['strokeColor'] = _libsbnw.gf_grp_getStrokeColor(group)
+        if sbne.ne_grp_isSetStrokeColor(group):
+            curve_features['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
 
         # get stroke width
-        if _libsbnw.gf_grp_isSetStrokeWidth(group):
-            curve_features['strokeWidth'] = _libsbnw.gf_grp_getStrokeWidth(group)
+        if sbne.ne_grp_isSetStrokeWidth(group):
+            curve_features['strokeWidth'] = sbne.ne_grp_getStrokeWidth(group)
 
         # get stroke dash array
-        if _libsbnw.gf_grp_isSetStrokeDashArray(group):
+        if sbne.ne_grp_isSetStrokeDashArray(group):
             dash_array = []
-            for d_index in range(_libsbnw.gf_grp_getNumStrokeDashes(group)):
-                dash_array.append(_libsbnw.gf_grp_getStrokeDash(group, d_index))
+            for d_index in range(sbne.ne_grp_getNumStrokeDashes(group)):
+                dash_array.append(sbne.ne_grp_getStrokeDash(group, d_index))
             curve_features['strokeDashArray'] = tuple(dash_array)
 
         # get heads
         heads_ = {}
-        if _libsbnw.gf_grp_isSetStartHead(group):
-            heads_['start'] = _libsbnw.gf_grp_getStartHead(group)
-        if _libsbnw.gf_grp_isSetEndHead(group):
-            heads_['end'] = _libsbnw.gf_grp_getEndHead(group)
+        if sbne.ne_grp_isSetStartHead(group):
+            heads_['start'] = sbne.ne_grp_getStartHead(group)
+        if sbne.ne_grp_isSetEndHead(group):
+            heads_['end'] = sbne.ne_grp_getEndHead(group)
         if heads_:
             curve_features['heads'] = heads_
 
@@ -715,47 +715,47 @@ def get_text_features(group):
     text_features = {}
     if group:
         # get stroke color
-        if _libsbnw.gf_grp_isSetStrokeColor(group):
-            text_features['strokeColor'] = _libsbnw.gf_grp_getStrokeColor(group)
+        if sbne.ne_grp_isSetStrokeColor(group):
+            text_features['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
 
         # get font family
-        if _libsbnw.gf_grp_isSetFontFamily(group):
-            text_features['fontFamily'] = _libsbnw.gf_grp_getFontFamily(group)
+        if sbne.ne_grp_isSetFontFamily(group):
+            text_features['fontFamily'] = sbne.ne_grp_getFontFamily(group)
 
         # get font size
-        if _libsbnw.gf_grp_isSetFontSize(group):
-            rel_abs_vec = _libsbnw.gf_grp_getFontSize(group)
-            text_features['fontSize'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                         'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_grp_isSetFontSize(group):
+            rel_abs_vec = sbne.ne_grp_getFontSize(group)
+            text_features['fontSize'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                         'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get font weight
-        if _libsbnw.gf_grp_isSetFontWeight(group):
-            text_features['fontWeight'] = _libsbnw.gf_grp_getFontWeight(group)
+        if sbne.ne_grp_isSetFontWeight(group):
+            text_features['fontWeight'] = sbne.ne_grp_getFontWeight(group)
 
         # get font style
-        if _libsbnw.gf_grp_isSetFontStyle(group):
-            text_features['fontStyle'] = _libsbnw.gf_grp_getFontStyle(group)
+        if sbne.ne_grp_isSetFontStyle(group):
+            text_features['fontStyle'] = sbne.ne_grp_getFontStyle(group)
 
         # get horizontal text anchor
-        if _libsbnw.gf_grp_isSetHTextAnchor(group):
-            text_features['hTextAnchor'] = _libsbnw.gf_grp_getHTextAnchor(group)
+        if sbne.ne_grp_isSetHTextAnchor(group):
+            text_features['hTextAnchor'] = sbne.ne_grp_getHTextAnchor(group)
 
         # get vertical text anchor
-        if _libsbnw.gf_grp_isSetVTextAnchor(group):
-            text_features['vTextAnchor'] = _libsbnw.gf_grp_getVTextAnchor(group)
+        if sbne.ne_grp_isSetVTextAnchor(group):
+            text_features['vTextAnchor'] = sbne.ne_grp_getVTextAnchor(group)
 
         # get geometric shapes
-        if _libsbnw.gf_grp_getNumGeometricShapes(group):
+        if sbne.ne_grp_getNumGeometricShapes(group):
             geometric_shapes = []
-            for gs_index in range(_libsbnw.gf_grp_getNumGeometricShapes(group)):
-                gs = _libsbnw.gf_grp_getGeometricShape(group, gs_index)
+            for gs_index in range(sbne.ne_grp_getNumGeometricShapes(group)):
+                gs = sbne.ne_grp_getGeometricShape(group, gs_index)
 
-                if _libsbnw.gf_gs_getShape(gs) == 1:
+                if sbne.ne_gs_getShape(gs) == 1:
                     geometric_shape_features = {}
 
                     # get stroke color
-                    if _libsbnw.gf_gs_isSetStrokeColor(gs):
-                        geometric_shape_features['strokeColor'] = _libsbnw.gf_gs_getStrokeColor(gs)
+                    if sbne.ne_gs_isSetStrokeColor(gs):
+                        geometric_shape_features['strokeColor'] = sbne.ne_gs_getStrokeColor(gs)
 
                     # get geometric shape specific features
                     get_geometric_shape_exclusive_features(gs, geometric_shape_features)
@@ -768,245 +768,245 @@ def get_text_features(group):
 
 def get_geometric_shape_exclusive_features(gs, geometric_shape_features):
     # get image shape features
-    if _libsbnw.gf_gs_getShape(gs) == 0:
+    if sbne.ne_gs_getShape(gs) == 0:
         # set shape
         geometric_shape_features['shape'] = "image"
 
         # get position x
-        if _libsbnw.gf_img_isSetPositionX(gs):
-            rel_abs_vec = _libsbnw.gf_img_getPositionX(gs)
-            geometric_shape_features['x'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetPositionX(gs):
+            rel_abs_vec = sbne.ne_img_getPositionX(gs)
+            geometric_shape_features['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position y
-        if _libsbnw.gf_img_isSetPositionY(gs):
-            rel_abs_vec = _libsbnw.gf_img_getPositionY(gs)
-            geometric_shape_features['y'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetPositionY(gs):
+            rel_abs_vec = sbne.ne_img_getPositionY(gs)
+            geometric_shape_features['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension width
-        if _libsbnw.gf_img_isSetDimensionWidth(gs):
-            rel_abs_vec = _libsbnw.gf_img_getDimensionWidth(gs)
-            geometric_shape_features['width'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                                 'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetDimensionWidth(gs):
+            rel_abs_vec = sbne.ne_img_getDimensionWidth(gs)
+            geometric_shape_features['width'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                                 'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension height
-        if _libsbnw.gf_img_isSetDimensionHeight(gs):
-            rel_abs_vec = _libsbnw.gf_img_getDimensionHeight(gs)
-            geometric_shape_features['height'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                                  'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetDimensionHeight(gs):
+            rel_abs_vec = sbne.ne_img_getDimensionHeight(gs)
+            geometric_shape_features['height'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                                  'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get href
-        if _libsbnw.gf_img_isSetHref(gs):
-            geometric_shape_features['href'] = _libsbnw.gf_img_getHref(gs)
+        if sbne.ne_img_isSetHref(gs):
+            geometric_shape_features['href'] = sbne.ne_img_getHref(gs)
 
     # get render curve shape features
-    if _libsbnw.gf_gs_getShape(gs) == 1:
+    if sbne.ne_gs_getShape(gs) == 1:
         # set shape
         geometric_shape_features['shape'] = "renderCurve"
 
         vertices_ = []
-        for v_index in range(_libsbnw.gf_rc_getNumVertices(gs)):
-            vertex = _libsbnw.gf_rc_getVertex(gs, v_index)
+        for v_index in range(sbne.ne_rc_getNumVertices(gs)):
+            vertex = sbne.ne_rc_getVertex(gs, v_index)
             vertex_ = {}
-            render_point = _libsbnw.gf_vertex_getRenderPoint(vertex)
+            render_point = sbne.ne_vrx_getRenderPoint(vertex)
             if render_point:
                 vertex_['renderPointX'] = dict(
-                    abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getX(render_point)),
-                    rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getX(render_point)))
+                    abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getX(render_point)),
+                    rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getX(render_point)))
                 vertex_['renderPointY'] = dict(
-                    abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getY(render_point)),
-                    rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getY(render_point)))
-            if _libsbnw.gf_vertex_isRenderCubicBezier(vertex):
-                base_point1 = _libsbnw.gf_vertex_getBasePoint1(vertex)
-                base_point2 = _libsbnw.gf_vertex_getBasePoint2(vertex)
+                    abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getY(render_point)),
+                    rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(render_point)))
+            if sbne.ne_vertex_isRenderCubicBezier(vertex):
+                base_point1 = sbne.ne_vrx_getBasePoint1(vertex)
+                base_point2 = sbne.ne_vrx_getBasePoint2(vertex)
                 if base_point1 and base_point2:
                     vertex_['basePoint1X'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getX(base_point1)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getX(base_point1)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getX(base_point1)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getX(base_point1)))
                     vertex_['basePoint1Y'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getY(base_point1)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getY(base_point1)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getY(base_point1)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(base_point1)))
                     vertex_['basePoint2X'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getX(base_point2)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getX(base_point2)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getX(base_point2)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getX(base_point2)))
                     vertex_['basePoint2Y'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getY(base_point2)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getY(base_point2)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getY(base_point2)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(base_point2)))
             vertices_.append(vertex_)
 
         geometric_shape_features['vertices'] = vertices_
 
     # get text shape features
-    if _libsbnw.gf_gs_getShape(gs) == 2:
+    if sbne.ne_gs_getShape(gs) == 2:
         # set shape
         geometric_shape_features['shape'] = "text"
 
         # get position x
-        if _libsbnw.gf_txt_isSetPositionX(gs):
-            rel_abs_vec = _libsbnw.gf_txt_getPositionX(gs)
-            geometric_shape_features['x'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_txt_isSetPositionX(gs):
+            rel_abs_vec = sbne.ne_txt_getPositionX(gs)
+            geometric_shape_features['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position y
-        if _libsbnw.gf_txt_isSetPositionY(gs):
-            rel_abs_vec = _libsbnw.gf_txt_getPositionY(gs)
-            geometric_shape_features['y'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_txt_isSetPositionY(gs):
+            rel_abs_vec = sbne.ne_txt_getPositionY(gs)
+            geometric_shape_features['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get font family
-        if _libsbnw.gf_txt_isSetFontFamily(gs):
-            geometric_shape_features['fontFamily'] = _libsbnw.gf_txt_getFontFamily(gs)
+        if sbne.ne_txt_isSetFontFamily(gs):
+            geometric_shape_features['fontFamily'] = sbne.ne_txt_getFontFamily(gs)
 
         # get font size
-        if _libsbnw.gf_txt_isSetFontSize(gs):
-            rel_abs_vec = _libsbnw.gf_txt_getFontSize(gs)
-            geometric_shape_features['fontSize'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                                    'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_txt_isSetFontSize(gs):
+            rel_abs_vec = sbne.ne_txt_getFontSize(gs)
+            geometric_shape_features['fontSize'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                                    'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get font weight
-        if _libsbnw.gf_txt_isSetFontWeight(gs):
-            geometric_shape_features['fontWeight'] = _libsbnw.gf_txt_getFontWeight(gs)
+        if sbne.ne_txt_isSetFontWeight(gs):
+            geometric_shape_features['fontWeight'] = sbne.ne_txt_getFontWeight(gs)
 
         # get font style
-        if _libsbnw.gf_txt_isSetFontStyle(gs):
-            geometric_shape_features['fontStyle'] = _libsbnw.gf_grp_getFontStyle(gs)
+        if sbne.ne_txt_isSetFontStyle(gs):
+            geometric_shape_features['fontStyle'] = sbne.ne_grp_getFontStyle(gs)
 
         # get horizontal text anchor
-        if _libsbnw.gf_txt_isSetHTextAnchor(gs):
-            geometric_shape_features['hTextAnchor'] = _libsbnw.gf_txt_getHTextAnchor(gs)
+        if sbne.ne_txt_isSetHTextAnchor(gs):
+            geometric_shape_features['hTextAnchor'] = sbne.ne_txt_getHTextAnchor(gs)
 
         # get vertical text anchor
-        if _libsbnw.gf_txt_isSetVTextAnchor(gs):
-            geometric_shape_features['vTextAnchor'] = _libsbnw.gf_txt_getVTextAnchor(gs)
+        if sbne.ne_txt_isSetVTextAnchor(gs):
+            geometric_shape_features['vTextAnchor'] = sbne.ne_txt_getVTextAnchor(gs)
 
     # get rectangle shape features
-    elif _libsbnw.gf_gs_getShape(gs) == 3:
+    elif sbne.ne_gs_getShape(gs) == 3:
         # set shape
         geometric_shape_features['shape'] = "rectangle"
 
         # get fill color
-        if _libsbnw.gf_gs_isSetFillColor(gs):
-            geometric_shape_features['fillColor'] = _libsbnw.gf_gs_getFillColor(gs)
+        if sbne.ne_gs_isSetFillColor(gs):
+            geometric_shape_features['fillColor'] = sbne.ne_gs_getFillColor(gs)
 
         # get position x
-        if _libsbnw.gf_rec_isSetPositionX(gs):
-            rel_abs_vec = _libsbnw.gf_rec_getPositionX(gs)
-            geometric_shape_features['x'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetPositionX(gs):
+            rel_abs_vec = sbne.ne_rec_getPositionX(gs)
+            geometric_shape_features['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position y
-        if _libsbnw.gf_rec_isSetPositionY(gs):
-            rel_abs_vec = _libsbnw.gf_rec_getPositionY(gs)
-            geometric_shape_features['y'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetPositionY(gs):
+            rel_abs_vec = sbne.ne_rec_getPositionY(gs)
+            geometric_shape_features['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension width
-        if _libsbnw.gf_rec_isSetDimensionWidth(gs):
-            rel_abs_vec = _libsbnw.gf_rec_getDimensionWidth(gs)
-            geometric_shape_features['width'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                                 'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetDimensionWidth(gs):
+            rel_abs_vec = sbne.ne_rec_getDimensionWidth(gs)
+            geometric_shape_features['width'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                                 'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension height
-        if _libsbnw.gf_rec_isSetDimensionHeight(gs):
-            rel_abs_vec = _libsbnw.gf_rec_getDimensionHeight(gs)
-            geometric_shape_features['height'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                                  'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetDimensionHeight(gs):
+            rel_abs_vec = sbne.ne_rec_getDimensionHeight(gs)
+            geometric_shape_features['height'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                                  'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get corner curvature radius rx
-        if _libsbnw.gf_rec_isSetCornerCurvatureRX(gs):
-            rel_abs_vec = _libsbnw.gf_rec_getCornerCurvatureRX(gs)
-            geometric_shape_features['rx'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetCornerCurvatureRX(gs):
+            rel_abs_vec = sbne.ne_rec_getCornerCurvatureRX(gs)
+            geometric_shape_features['rx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get corner curvature radius ry
-        if _libsbnw.gf_rec_isSetCornerCurvatureRY(gs):
-            rel_abs_vec = _libsbnw.gf_rec_getCornerCurvatureRY(gs)
-            geometric_shape_features['ry'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetCornerCurvatureRY(gs):
+            rel_abs_vec = sbne.ne_rec_getCornerCurvatureRY(gs)
+            geometric_shape_features['ry'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get width/height ratio
-        if _libsbnw.gf_rec_isSetRatio(gs):
-            geometric_shape_features['ratio'] = _libsbnw.gf_rec_getRatio(gs)
+        if sbne.ne_rec_isSetRatio(gs):
+            geometric_shape_features['ratio'] = sbne.ne_rec_getRatio(gs)
 
     # get ellipse shape features
-    elif _libsbnw.gf_gs_getShape(gs) == 4:
+    elif sbne.ne_gs_getShape(gs) == 4:
         # set shape
         geometric_shape_features['shape'] = "ellipse"
 
         # get fill color
-        if _libsbnw.gf_gs_isSetFillColor(gs):
-            geometric_shape_features['fillColor'] = _libsbnw.gf_gs_getFillColor(gs)
+        if sbne.ne_gs_isSetFillColor(gs):
+            geometric_shape_features['fillColor'] = sbne.ne_gs_getFillColor(gs)
 
         # get position cx
-        if _libsbnw.gf_elp_isSetPositionCX(gs):
-            rel_abs_vec = _libsbnw.gf_elp_getPositionCX(gs)
-            geometric_shape_features['cx'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetPositionCX(gs):
+            rel_abs_vec = sbne.ne_elp_getPositionCX(gs)
+            geometric_shape_features['cx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position cy
-        if _libsbnw.gf_elp_isSetPositionCY(gs):
-            rel_abs_vec = _libsbnw.gf_elp_getPositionCY(gs)
-            geometric_shape_features['cy'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetPositionCY(gs):
+            rel_abs_vec = sbne.ne_elp_getPositionCY(gs)
+            geometric_shape_features['cy'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension rx
-        if _libsbnw.gf_elp_isSetDimensionRX(gs):
-            rel_abs_vec = _libsbnw.gf_elp_getDimensionRX(gs)
-            geometric_shape_features['rx'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetDimensionRX(gs):
+            rel_abs_vec = sbne.ne_elp_getDimensionRX(gs)
+            geometric_shape_features['rx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension ry
-        if _libsbnw.gf_elp_isSetDimensionRY(gs):
-            rel_abs_vec = _libsbnw.gf_elp_getDimensionRY(gs)
-            geometric_shape_features['ry'] = {'abs': _libsbnw.gf_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': _libsbnw.gf_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetDimensionRY(gs):
+            rel_abs_vec = sbne.ne_elp_getDimensionRY(gs)
+            geometric_shape_features['ry'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get radius ratio
-        if _libsbnw.gf_elp_isSetRatio(gs):
-            geometric_shape_features['ratio'] = _libsbnw.gf_elp_getRatio(gs)
+        if sbne.ne_elp_isSetRatio(gs):
+            geometric_shape_features['ratio'] = sbne.ne_elp_getRatio(gs)
 
     # get polygon shape features
-    elif _libsbnw.gf_gs_getShape(gs) == 5:
+    elif sbne.ne_gs_getShape(gs) == 5:
         # set shape
         geometric_shape_features['shape'] = "polygon"
 
         # get fill color
-        if _libsbnw.gf_gs_isSetFillColor(gs):
-            geometric_shape_features['fillColor'] = _libsbnw.gf_gs_getFillColor(gs)
+        if sbne.ne_gs_isSetFillColor(gs):
+            geometric_shape_features['fillColor'] = sbne.ne_gs_getFillColor(gs)
 
         # get fill rule
-        if _libsbnw.gf_gs_isSetFillRule(gs):
-            geometric_shape_features['fillRule'] = _libsbnw.gf_gs_getFillRule(gs)
+        if sbne.ne_gs_isSetFillRule(gs):
+            geometric_shape_features['fillRule'] = sbne.ne_gs_getFillRule(gs)
 
         vertices_ = []
-        for v_index in range(_libsbnw.gf_plg_getNumVertices(gs)):
-            vertex = _libsbnw.gf_plg_getVertex(gs, v_index)
+        for v_index in range(sbne.ne_plg_getNumVertices(gs)):
+            vertex = sbne.ne_plg_getVertex(gs, v_index)
             vertex_ = {}
-            render_point = _libsbnw.gf_vertex_getRenderPoint(vertex)
+            render_point = sbne.ne_vrx_getRenderPoint(vertex)
             if render_point:
                 vertex_['renderPointX'] = dict(
-                    abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getX(render_point)),
-                    rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getX(render_point)))
+                    abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getX(render_point)),
+                    rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getX(render_point)))
                 vertex_['renderPointY'] = dict(
-                    abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getY(render_point)),
-                    rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getY(render_point)))
-            if _libsbnw.gf_vertex_isRenderCubicBezier(vertex):
-                base_point1 = _libsbnw.gf_vertex_getBasePoint1(vertex)
-                base_point2 = _libsbnw.gf_vertex_getBasePoint2(vertex)
+                    abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getY(render_point)),
+                    rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(render_point)))
+            if sbne.ne_vrx_isRenderCubicBezier(vertex):
+                base_point1 = sbne.ne_vrx_getBasePoint1(vertex)
+                base_point2 = sbne.ne_vrx_getBasePoint2(vertex)
                 if base_point1 and base_point2:
                     vertex_['basePoint1X'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getX(base_point1)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getX(base_point1)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getX(base_point1)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getX(base_point1)))
                     vertex_['basePoint1Y'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getY(base_point1)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getY(base_point1)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getY(base_point1)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(base_point1)))
                     vertex_['basePoint2X'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getX(base_point2)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getX(base_point2)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getX(base_point2)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getX(base_point2)))
                     vertex_['basePoint2Y'] = dict(
-                        abs=_libsbnw.gf_rav_getAbsoluteValue(_libsbnw.gf_rpoint_getY(base_point2)),
-                        rel=_libsbnw.gf_rav_getRelativeValue(_libsbnw.gf_rpoint_getY(base_point2)))
+                        abs=sbne.ne_rav_getAbsoluteValue(sbne.ne_rp_getY(base_point2)),
+                        rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(base_point2)))
             vertices_.append(vertex_)
 
         geometric_shape_features['vertices'] = vertices_
@@ -1479,7 +1479,7 @@ def fit_species_bbox(species, text_features):
         is_box_modified = False
         if text_width > 0.9 * text_features['boundingBox']['width']:
             text_width_ = 1.15 * text_width
-            text_width_ = min(max(text_features['boundingBox']['width'], _libsbnw.maxSpeciesBoxWidth), text_width_)
+            text_width_ = min(max(text_features['boundingBox']['width'], sbne.maxSpeciesBoxWidth), text_width_)
             text_features['boundingBox']['x'] -= 0.5 * (text_width_ - text_features['boundingBox']['width'])
             text_features['boundingBox']['width'] = text_width_
 
@@ -1492,13 +1492,13 @@ def fit_species_bbox(species, text_features):
 
         if text_height > 0.9 * text_features['boundingBox']['height']:
             text_height *= 1.15
-            text_height = min(max(text_features['boundingBox']['height'], _libsbnw.maxSpeciesBoxHeight), text_height)
+            text_height = min(max(text_features['boundingBox']['height'], sbne.maxSpeciesBoxHeight), text_height)
             text_features['boundingBox']['y'] -= 0.5 * (text_height - text_features['boundingBox']['height'])
             text_features['boundingBox']['height'] = text_height
             is_box_modified = True
 
         if is_box_modified:
-            _libsbnw.gf_spc_updateBoundingBox(species['speciesGlyph'],
+            sbne.ne_spc_updateBoundingBox(species['speciesGlyph'],
                                               text_features['boundingBox']['x'],
                                               text_features['boundingBox']['y'],
                                               text_features['boundingBox']['width'],
