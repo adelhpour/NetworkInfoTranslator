@@ -1,6 +1,6 @@
 # SBMLplotlib
 
-SBMLplotlib is a python tool built on <a href="https://github.com/adelhpour/SBNE">SBNE</a>, an API which can read, manipulate, and write SBML layout and redner information. Through matplotlib, SBMLplotlib renders the biological network of an SBML model using either its already included or auto-generated inforamation about layout and render extensions of SBML.
+SBMLplotlib is a python tool built on <a href="https://github.com/adelhpour/SBNE">SBNE</a>, an API which can read, manipulate, and write SBML layout and redner information. Through matplotlib, SBMLplotlib renders the biological network of an SBML model using either its already-included or auto-generated inforamation about layout and render extensions of SBML.
 
 ## How to Use
 
