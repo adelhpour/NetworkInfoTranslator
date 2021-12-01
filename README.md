@@ -9,6 +9,7 @@ Sbmlplot is a python tool built on <a href="https://github.com/adelhpour/SBNE">l
 ## How to Use
 
 sbmplot can be installed from <a href="https://test.pypi.org/">TestPyPI</a> using pip as:
+
 `pip install -i https://test.pypi.org/simple/ sbmlplot`
 
 Once that is done, it is possible to `import sbmlplot` in your script and make use of its methods. 
