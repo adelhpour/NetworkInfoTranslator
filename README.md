@@ -18,7 +18,7 @@ Once that is done, it is possible to `import sbmlplot` in your script and make u
 ## A simple script
 A simple script which shows how to read an SBML (xml) file, export a static illustration of its network in `.pdf` format, and generate the `.json` file that can be used by cytoscape.js to render the network of the model is contained in `testcases` directory.
 
-- ******NOTE******: You can follow <a href="https://blog.js.cytoscape.org/2016/05/24/getting-started/">this tutorial</a>  to see how to visualize the network of your model using the generated `.json` file.
+******NOTE******: You can follow <a href="https://blog.js.cytoscape.org/2016/05/24/getting-started/">this tutorial</a>  to see how to visualize the network of your model using the generated `.json` file.
 
 ## Dependences
 <a href="https://github.com/adelhpour/SBNE">libsbne</a>, matplotlib, numPy, 
