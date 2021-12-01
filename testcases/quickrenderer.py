@@ -1,17 +1,20 @@
-import sbmlplotlib as sbmlplt
+import sbmlplot
 
-sbmlplt.SBMLRenderer(inputfile="exampleSBMLModelFile.xml", outputfile="outputFile.pdf")
+sbmlplot.SBMLRenderer(inputfilename="exampleSBMLModelFile.xml", export_graph_info=True, export_figure_format=".pdf")
 
 """
 
-Exports a rendered figure of the SBML model
+Exports
+    * a static illustration of the biological network of the SBML model
+    * a .json file containing the elements and styles information required to render a dynamic illustration of the biological network of the model through cytoscape.js.
 
 Parameters
 ----------
 
-inputfile : the directory of the SBML model (xml file)
+inputfilename : the directory of the SBML model (xml file)
 
-outputfile : the directory where the rendered figure is saved.
-    The export format can be determined using .pdf, .svg, .png, and etc. at the end of the outputfile name
-    
+export_graph_info : a boolean indicating whether to export the .json file or not
+
+export_figure_format : a string indicating the format of the exported figure, including .pdf, .svg, and .png. No figure is exported if it is not set.
+
 """

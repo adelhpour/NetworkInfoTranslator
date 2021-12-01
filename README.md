@@ -1,22 +1,23 @@
-# SBMLplotlib
+# sbmlplot
 
-SBMLplotlib is a python tool built on <a href="https://github.com/adelhpour/SBNE">SBNE</a>, an API which can read, manipulate, and write SBML layout and redner information. Through matplotlib, SBMLplotlib renders the biological network of an SBML model using either its already-included or auto-generated inforamation about layout and render extensions of SBML.
+Sbmlplot is a python tool built on <a href="https://github.com/adelhpour/SBNE">libSBNE</a>, an API which can read or automatically generate, manipulate, and write SBML Layout and Redner information. Using either the already-included or auto-generated information about Layout and Render extensions of an SBML model, sbmlplot helps you:
+
+    - render a static illustration of the biological network of the SBML model through <a href="https://matplotlib.org/">matplotlib</a>
+    
+    - generate a `.json` file containing the *elements* and *styles* information required to render a dynamic illustration of the biological network of the model through <a href="https://js.cytoscape.org/">cytoscape.js</a>.
 
 ## How to Use
 
-To use SBMLplotlib, you first need to:
-* Build SBNE from its <a href="https://github.com/adelhpour/SBNE">source</a> (follow the instructions in "Use Python bindings" section)
+sbmplot can be installed using pip as:
+`pip install sbmlplot`
 
-* Add the directory of the SBNE built Python library to your `PYTHONPATH`
+Once it is done, it is possible to `import sbmlplot` in your script and make use of its methods. 
 
-* Add `<root directory of SBMLplotlib>/src/sbmlplotlib` to your `PYTHONPATH`
-
-And then you are able to `import sbmlplotlib` into your script, but make sure you are using Python 3.6 and matplotlib 3.1.0 or newer.
 
 ## A simple script
-A simple script, which reads an SBML (xml) file and exports the rendered figure of its network, is contained in `testcases` direcotory.
+A simple script which shows how to read an SBML (xml) file, export a static illustration of its network in `.pdf` format, and generate the `.json` file that can be used by cytoscape.js to render the network of the model is contained in `testcases` directory.
 
 ## Dependences
-Matplotlib, numPy, <a href="https://github.com/adelhpour/SBNE">SBNE</a>
+<a href="https://github.com/adelhpour/SBNE">libsbne</a>, matplotlib, numPy, 
 
 
