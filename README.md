@@ -2,16 +2,16 @@
 
 Sbmlplot is a python tool built on <a href="https://github.com/adelhpour/SBNE">libSBNE</a>, an API which can read or automatically generate, manipulate, and write SBML Layout and Redner information. Using either the already-included or auto-generated information about Layout and Render extensions of an SBML model, sbmlplot helps you:
 
-* render a static illustration of the biological network of the SBML model through <a href="https://matplotlib.org/">matplotlib</a>
+* render a static illustration of the biological network of the SBML model through <a href="https://matplotlib.org/">matplotlib</a>,
     
 * generate a `.json` file containing the *elements* and *styles* information required to render a dynamic illustration of the biological network of the model through <a href="https://js.cytoscape.org/">cytoscape.js</a>.
 
 ## How to Use
 
-sbmplot can be installed using pip as:
-`pip install sbmlplot`
+sbmplot can be installed from <a href="https://test.pypi.org/">TestPyPI</a> using pip as:
+`pip install -i https://test.pypi.org/simple/ sbmlplot`
 
-Once it is done, it is possible to `import sbmlplot` in your script and make use of its methods. 
+Once that is done, it is possible to `import sbmlplot` in your script and make use of its methods. 
 
 
 ## A simple script
