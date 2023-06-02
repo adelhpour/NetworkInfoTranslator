@@ -1,3 +1,4 @@
+import sys
 import libsbne as sbne
 import numpy as np
 import math
@@ -11,962 +12,807 @@ import matplotlib.colors as mcolors
 import matplotlib.cbook as cbook
 from matplotlib.textpath import TextToPath
 from matplotlib.font_manager import FontProperties
+import libsbml
+import webcolors
 
 matplotlib.use('Agg')
 
-colors = []
-gradients = []
-lineEndings = []
-is_layout_modified = False
-is_render_modified = False
 
-
-class SBMLRenderer:
-    def __init__(self, inputfilename=None, export_graph_info=False, export_figure_format=""):
-        colors.clear()
-        gradients.clear()
-        lineEndings.clear()
-        self.sbmlDocument = None
-        self.layoutInfo = None
-        self.renderInfo = None
-        self.network = None
-        self.veneer = None
+class SBMLGraphInfoImportBase:
+    def __init__(self):
         self.compartments = []
         self.species = []
         self.reactions = []
-        self.sbml_figure, self.sbml_axes = plt.subplots()
-        self.sbml_axes.invert_yaxis()
+        self.colors = []
+        self.gradients = []
+        self.line_endings = []
+        self.extents = {}
+
+    def reset_info(self):
+        self.compartments.clear()
+        self.species.clear()
+        self.reactions.clear()
+        self.colors.clear()
+        self.gradients.clear()
+        self.line_endings.clear()
         self.extents = {'minX': 0, 'maxX': 0, 'minY': 0, 'maxY': 0}
 
-        if inputfilename:
-            # load sbml model
-            self.load_sbml(inputfilename)
-
-            # export info of the network as .js file
-            if export_graph_info:
-                self.create_graph_info(inputfilename)
-
-            # render the network of the model and save it
-            if export_figure_format:
-                self.render_sbml(inputfilename, export_figure_format)
-
-    def load_sbml(self, filename):
-        # get SBML document from and .xml model file
-        self.sbmlDocument = sbne.ne_doc_readSBML(filename)
-
-        # get the layout info from the document
-        self.load_layout_info()
-
-        # get the render info from the document
-        self.load_render_info()
-
-    def load_layout_info(self):
-        global is_layout_modified
-        self.layoutInfo = sbne.ne_doc_processLayoutInfo(self.sbmlDocument)
-        self.network = sbne.ne_li_getNetwork(self.layoutInfo)
-
-        if self.network:
-            # if layout is not specified
-            if not sbne.ne_net_isLayoutSpecified(self.network):
-
-                # implement layout algorithm
-                sbne.ne_li_addLayoutFeaturesToNetowrk(self.layoutInfo)
-
-                # set the layout modification flag as true
-                is_layout_modified = True
-            # if layout has already specified
-            else:
-                is_layout_modified = False
-
-            # if now layout is specified
-            if sbne.ne_net_isLayoutSpecified(self.network):
-                # get compartments info
-                for c_index in range(sbne.ne_net_getNumCompartments(self.network)):
-                    compartment_ = {}
-                    if sbne.ne_go_isSetGlyphId(sbne.ne_net_getCompartment(self.network, c_index)):
-                        compartment_['compartmentGlyph'] = sbne.ne_net_getCompartment(self.network, c_index)
-                        compartment_['referenceId'] = sbne.ne_ne_getId(compartment_['compartmentGlyph'])
-                        compartment_['id'] = sbne.ne_go_getGlyphId(compartment_['compartmentGlyph'])
-                        if sbne.ne_ne_isSetMetaId(compartment_['compartmentGlyph']):
-                            compartment_['metaId'] = sbne.ne_ne_getMetaId(compartment_['compartmentGlyph'])
-
-                        # set the text associated with the compartment
-                        if sbne.ne_go_getNumTexts(compartment_['compartmentGlyph']):
-                            compartment_['text'] = {}
-                            compartment_['text']['textGlyph'] = sbne.ne_go_getText(compartment_['compartmentGlyph'], 0)
-                            update_text_features(self.network, compartment_)
-
-                        self.compartments.append(compartment_)
-
-                # get species info
-                for s_index in range(sbne.ne_net_getNumSpecies(self.network)):
-                    species_ = {}
-                    if sbne.ne_go_isSetGlyphId(sbne.ne_net_getSpecies(self.network, s_index)):
-                        species_['speciesGlyph'] = sbne.ne_net_getSpecies(self.network, s_index)
-                        species_['referenceId'] = sbne.ne_ne_getId(species_['speciesGlyph'])
-                        species_['id'] = sbne.ne_go_getGlyphId(species_['speciesGlyph'])
-                        if sbne.ne_ne_isSetMetaId(species_['speciesGlyph']):
-                            species_['metaId'] = sbne.ne_ne_getMetaId(species_['speciesGlyph'])
-
-                        # set the compartment
-                        if sbne.ne_spc_isSetCompartment(species_['speciesGlyph']):
-                            for c in self.compartments:
-                                if sbne.ne_spc_getCompartment(species_['speciesGlyph']) == c['referenceId']:
-                                    species_['compartment'] = c['id']
-                                    break
-
-                        # set the text associated with the species
-                        if sbne.ne_go_getNumTexts(species_['speciesGlyph']):
-                            species_['text'] = {}
-                            species_['text']['textGlyph'] = sbne.ne_go_getText(species_['speciesGlyph'], 0)
-                            update_text_features(self.network, species_)
-
-                        self.species.append(species_)
-
-                # get reactions info
-                for r_index in range(sbne.ne_net_getNumReactions(self.network)):
-                    reaction_ = {}
-                    if sbne.ne_go_isSetGlyphId(sbne.ne_net_getReaction(self.network, r_index)):
-                        reaction_['reactionGlyph'] = sbne.ne_net_getReaction(self.network, r_index)
-                        reaction_['referenceId'] = sbne.ne_ne_getId(reaction_['reactionGlyph'])
-                        reaction_['id'] = sbne.ne_go_getGlyphId(reaction_['reactionGlyph'])
-                        if sbne.ne_ne_isSetMetaId(reaction_['reactionGlyph']):
-                            reaction_['metaId'] = sbne.ne_ne_getMetaId(reaction_['reactionGlyph'])
-
-                        # set the compartment
-                        r_compartment = sbne.ne_rxn_findCompartment(reaction_['reactionGlyph'])
-                        if r_compartment:
-                            for c in self.compartments:
-                                if r_compartment == c['referenceId']:
-                                    reaction_['compartment'] = c['id']
-                                    break
-
-                        # set the text associated with the reaction
-                        if sbne.ne_go_getNumTexts(reaction_['reactionGlyph']):
-                            reaction_['text'] = {}
-                            reaction_['text']['textGlyph'] = sbne.ne_go_getText(reaction_['reactionGlyph'], 0)
-                            update_text_features(self.network, reaction_)
-
-                        # get species reference info
-                        species_references = []
-                        for sr_index in range(sbne.ne_rxn_getNumSpeciesReferences(reaction_['reactionGlyph'])):
-                            species_reference_ = {}
-                            if sbne.ne_go_isSetGlyphId(sbne.ne_rxn_getSpeciesReference(
-                                    reaction_['reactionGlyph'], sr_index)):
-                                species_reference_['sReferenceGlyph'] = sbne.ne_rxn_getSpeciesReference(
-                                    reaction_['reactionGlyph'], sr_index)
-                                species_reference_['id'] = \
-                                    sbne.ne_go_getGlyphId(species_reference_['sReferenceGlyph'])
-                                species_reference_['referenceId'] = \
-                                    sbne.ne_ne_getId(species_reference_['sReferenceGlyph'])
-                                if sbne.ne_ne_isSetMetaId(species_reference_['sReferenceGlyph']):
-                                    species_reference_['metaId'] = \
-                                        sbne.ne_ne_getMetaId(species_reference_['sReferenceGlyph'])
-                                if sbne.ne_sr_isSetSpecies(species_reference_['sReferenceGlyph']):
-                                    species_reference_['species'] = sbne.ne_go_getGlyphId(sbne.ne_sr_getSpecies(
-                                        species_reference_['sReferenceGlyph']))
-                                if sbne.ne_sr_isSetRole(species_reference_['sReferenceGlyph']):
-                                    species_reference_['role'] = sbne.ne_sr_getRoleAsString(
-                                        species_reference_['sReferenceGlyph'])
-                                species_references.append(species_reference_)
-                        reaction_['speciesReferences'] = species_references
-                        self.reactions.append(reaction_)
-
-    def load_render_info(self):
-        global is_render_modified
-        if self.network:
-            self.renderInfo = sbne.ne_doc_processRenderInfo(self.sbmlDocument)
-            self.veneer = sbne.ne_ri_getVeneer(self.renderInfo)
-
-            # if render is not specified
-            if not sbne.ne_ven_isRenderSpecified(self.veneer):
-
-                # implement layout algorithm
-                sbne.ne_ri_addDefaultRenderFeaturesToVeneer(self.renderInfo)
-
-                # set the render modification flag as true
-                is_render_modified = True
-            # if layout has already specified
-            else:
-                is_render_modified = False
-
-            # if now render is specified
-            if sbne.ne_ven_isRenderSpecified(self.veneer):
-                # get colors info
-                for c_index in range(sbne.ne_ven_getNumColors(self.veneer)):
-                    color_ = {'colorDefinition': sbne.ne_ven_getColor(self.veneer, c_index)}
-                    color_['id'] = sbne.ne_ve_getId(color_['colorDefinition'])
-                    colors.append(color_)
-                    update_color_features(color_)
-
-                # get gradients info
-                for g_index in range(sbne.ne_ven_getNumGradients(self.veneer)):
-                    gradient_ = {'gradientBase': sbne.ne_ven_getGradient(self.veneer, g_index)}
-                    gradient_['id'] = sbne.ne_ve_getId(gradient_['gradientBase'])
-                    gradients.append(gradient_)
-                    update_gradient_features(gradient_)
-
-                # get line ending info
-                for le_index in range(sbne.ne_ven_getNumLineEndings(self.veneer)):
-                    line_ending_ = {'lineEnding': sbne.ne_ven_getLineEnding(self.veneer, le_index)}
-                    line_ending_['id'] = sbne.ne_ve_getId(line_ending_['lineEnding'])
-                    lineEndings.append(line_ending_)
-                    update_line_ending_features(line_ending_)
-
-                # get compartments style from veneer
-                for c_index in range(len(self.compartments)):
-                    self.compartments[c_index]['style'] = \
-                        sbne.ne_ven_findStyle(self.veneer, self.compartments[c_index]['compartmentGlyph'])
-
-                    # get text style from veneer
-                    if 'text' in list(self.compartments[c_index].keys())\
-                            and 'textGlyph' in list(self.compartments[c_index]['text'].keys()):
-                        self.compartments[c_index]['text']['style'] = \
-                            sbne.ne_ven_findStyle(self.veneer, self.compartments[c_index]['text']['textGlyph'],
-                                                  sbne.ST_TYPE_COMP)
-
-                    # update compartment features
-                    update_compartment_features(self.compartments[c_index], self.extents)
-
-                    # display compartment
-                    if 'features' in list(self.compartments[c_index].keys()):
-                        draw_graphical_shape(self.sbml_axes, self.compartments[c_index]['features'], z_order=0)
-
-                    # display compartment text
-                    if 'text' in list(self.compartments[c_index].keys()) and \
-                            'features' in list(self.compartments[c_index]['text'].keys()):
-                        draw_text(self.sbml_axes, self.compartments[c_index]['text']['features'])
-
-                # get species style from veneer
-                for s_index in range(len(self.species)):
-                    self.species[s_index]['style'] = \
-                        sbne.ne_ven_findStyle(self.veneer, self.species[s_index]['speciesGlyph'])
-
-                    # get text style from veneer
-                    if 'text' in list(self.species[s_index].keys())\
-                            and 'textGlyph' in list(self.species[s_index]['text'].keys()):
-                        self.species[s_index]['text']['style'] =\
-                            sbne.ne_ven_findStyle(self.veneer, self.species[s_index]['text']['textGlyph'],
-                                                  sbne.ST_TYPE_TXT)
-
-                    # update species features
-                    update_species_features(self.species[s_index])
-
-                    # display species
-                    if 'features' in list(self.species[s_index].keys()):
-                        draw_graphical_shape(self.sbml_axes, self.species[s_index]['features'], z_order=4)
-
-                    # display species text
-                    if 'text' in list(self.species[s_index].keys()) and \
-                            'features' in list(self.species[s_index]['text'].keys()):
-                        draw_text(self.sbml_axes, self.species[s_index]['text']['features'])
-
-                # get reactions style from veneer
-                for r_index in range(len(self.reactions)):
-                    self.reactions[r_index]['style'] = \
-                        sbne.ne_ven_findStyle(self.veneer, self.reactions[r_index]['reactionGlyph'])
-
-                    # update reaction features
-                    update_reaction_features(self.reactions[r_index])
-
-                    # display reaction
-                    if 'features' in list(self.reactions[r_index].keys()):
-                        # display reaction curve
-                        if 'curve' in list(self.reactions[r_index]['features']):
-                            draw_curve(self.sbml_axes, self.reactions[r_index]['features'], z_order=3)
-                        # display reaction graphical shape
-                        elif 'boundingBox' in list(self.reactions[r_index]['features']):
-                            draw_graphical_shape(self.sbml_axes, self.reactions[r_index]['features'], z_order=3)
-
-                    # get species references style from veneer
-                    if 'speciesReferences' in list(self.reactions[r_index].keys()):
-                        for sr_index in range(len(self.reactions[r_index]['speciesReferences'])):
-                            self.reactions[r_index]['speciesReferences'][sr_index]['style'] = \
-                                sbne.ne_ven_findStyle(self.veneer,
-                                                      self.reactions[r_index]['speciesReferences']
-                                                      [sr_index]['sReferenceGlyph'])
-                            # update species reference features
-                            update_species_reference_features(self.reactions[r_index]['speciesReferences'][sr_index])
-
-                            if 'features' in list(self.reactions[r_index]['speciesReferences'][sr_index]):
-                                # display species reference
-                                draw_curve(self.sbml_axes,
-                                           self.reactions[r_index]['speciesReferences'][sr_index]['features'],
-                                           z_order=1)
-
-                                # display line endings
-                                draw_line_endings(self.sbml_axes, self.reactions[
-                                    r_index]['speciesReferences'][sr_index]['features'])
-
-    def create_graph_info(self, filename):
-        nodes = []
-        edges = []
-        styles = []
-        for c in self.compartments:
-            if 'id' in list(c.keys()) and 'referenceId' in list(c.keys()):
-                node_ = dict(data={'id': c['referenceId'] + "_" + c['id'],
-                                   'referenceId': c['referenceId']})
-                if 'metaId' in list(c.keys()):
-                    node_['data']['metaId'] = c['metaId']
-                style_ = dict(selector="node[id = '" + c['referenceId'] + "_" + c['id'] + "']",
-                              css={'content': 'data(name)'})
-                get_node_features(c, node_, style_)
-                node_['selected'] = False
-                nodes.append(node_)
-                styles.append(style_)
-                styles.append(dict(selector="node[id = '" + c['referenceId'] + "_" + c['id'] + "']:selected",
-                                   css={'border-color': '#4169e1'}))
-
-        for s in self.species:
-            if 'id' in list(s.keys()) and 'referenceId' in list(s.keys()):
-                node_ = dict(data={'id': s['referenceId'] + "_" + s['id'],
-                                   'referenceId': s['referenceId']})
-                if 'metaId' in list(s.keys()):
-                    node_['data']['metaId'] = s['metaId']
-                style_ = dict(selector="node[id = '" + s['referenceId'] + "_" + s['id'] + "']",
-                              css={'content': 'data(name)'})
-                if 'compartment' in list(s.keys()):
-                    for c in self.compartments:
-                        if c['id'] == s['compartment']:
-                            node_['data']['parent'] = c['referenceId'] + "_" + c['id']
-                            break
-                get_node_features(s, node_, style_)
-                node_['selected'] = False
-                nodes.append(node_)
-                styles.append(style_)
-                styles.append(dict(selector="node[id = '" + s['referenceId'] + "_" + s['id'] + "']:selected",
-                              css={'background-color': '#4169e1'}))
-
-        for r in self.reactions:
-            if 'id' in list(r.keys()) and 'referenceId' in list(r.keys()):
-                node_ = dict(data={'id': r['referenceId'] + "_" + r['id'],
-                                   'referenceId': r['referenceId']})
-                if 'metaId' in list(r.keys()):
-                    node_['data']['metaId'] = r['metaId']
-                r_style_ = dict(selector="node[id = '" + r['referenceId'] + "_" + r['id'] + "']",
-                                css={'content': ""})
-                if 'compartment' in list(r.keys()):
-                    for c in self.compartments:
-                        if c['id'] == r['compartment']:
-                            node_['data']['parent'] = c['referenceId'] + "_" + c['id']
-                            break
-                get_node_features(r, node_, r_style_)
-                node_['selected'] = False
-                nodes.append(node_)
-                styles.append(r_style_)
-                styles.append(dict(selector="node[id = '" + r['referenceId'] + "_" + r['id'] + "']:selected",
-                                   css={'border-color': '#4169e1'}))
-
-                for sr in r['speciesReferences']:
-                    if 'id' in list(sr.keys()) and 'referenceId' in list(sr.keys()) and 'species' in list(sr.keys()):
-                        edge_ = dict(data={'id': sr['referenceId'] + "_" + sr['id'],
-                                           'referenceId': sr['referenceId']})
-                        if 'metaId' in list(sr.keys()):
-                            edge_['data']['metaId'] = sr['metaId']
-                        sr_style_ = dict(selector="edge[id = '" + sr['referenceId'] + "_" + sr['id'] + "']",
-                                         css={'content': "", 'curve-style': 'bezier'})
-
-                        species = {}
-                        for s in self.species:
-                            if s['id'] == sr['species']:
-                                species = s
-                                break
-                        if 'role' in list(sr.keys()):
-                            if sr['role'] == "product" or sr['role'] == "side product":
-                                edge_['data']['source'] = r['referenceId'] + "_" + r['id']
-                                edge_['data']['target'] = species['referenceId'] + "_" + species['id']
-                            else:
-                                edge_['data']['source'] = species['referenceId'] + "_" + species['id']
-                                edge_['data']['target'] = r['referenceId'] + "_" + r['id']
-
-                        get_edge_features(sr, edge_, sr_style_)
-                        edge_['selected'] = False
-                        edges.append(edge_)
-                        styles.append(sr_style_)
-                        styles.append(dict(selector="edge[id = '" + sr['referenceId'] + "_" + sr['id'] + "']:selected",
-                                           css={'line-color': '#4169e1',
-                                                'source-arrow-color': '#4169e1',
-                                                'target-arrow-color': '#4169e1'}))
-
-        graph_info = dict(data={'generated_by': "SBMLplot", 'name': pathlib(filename).stem,
-                                'shared_name': pathlib(filename).stem, 'selected': True})
-        graph_info['elements'] = {'nodes': nodes, 'edges': edges}
-        graph_info['style'] = styles
-        with open(filename.split('.')[0] + ".js", 'w', encoding='utf8') as js_file:
-            js_file.write("graph_info = ")
-            json.dump(graph_info, js_file, indent=1)
-            js_file.write(";")
-
-    def render_sbml(self, filename, export_figure_format):
-        if export_figure_format in [".pdf", ".svg", ".png"]:
-            if len(self.sbml_axes.patches):
-                self.sbml_axes.set_aspect('equal')
-                self.sbml_figure.set_size_inches(max(1.0, (self.extents['maxX'] - self.extents['minX']) / 72.0),
-                                                 max(1.0, (self.extents['maxY'] - self.extents['minY']) / 72.0))
-
-                plt.axis('equal')
-                plt.axis('off')
-                plt.tight_layout()
-                self.sbml_figure.savefig(filename.split('.')[0] + export_figure_format, transparent=True, dpi=300)
-                plt.close('all')
-
-
-def update_color_features(color):
-    color['features'] = {}
-    if color['colorDefinition']:
-        # get color value
-        if sbne.ne_clr_isSetValue(color['colorDefinition']):
-            color['features']['value'] = sbne.ne_clr_getValue(color['colorDefinition'])
-
-
-def find_color_value(color_id, search_among_gradients=True):
-    # search among the gradients
-    if search_among_gradients:
-        for g_index in range(len(gradients)):
-            if color_id == gradients[g_index]['id'] and 'stops' in list(gradients[g_index]['features'].keys()):
-                stop_colors = []
-                for s_index in range(len(gradients[g_index]['features']['stops'])):
-                    if 'color' in list(gradients[g_index]['features']['stops'][s_index].keys()):
-                        stop_colors.append(mcolors.to_rgb(
-                            find_color_value(gradients[g_index]['features']['stops'][s_index]['color'])))
-                if len(stop_colors):
-                    return mcolors.to_hex(np.average(np.array(stop_colors), axis=0).tolist())
-
-    # search among the colors
-    for c_index in range(len(colors)):
-        if color_id == colors[c_index]['id'] and 'value' in list(colors[c_index]['features'].keys()):
-            return colors[c_index]['features']['value']
-
-    return color_id
-
-
-def update_gradient_features(gradient):
-    gradient['features'] = {}
-    if gradient['gradientBase']:
-        # get spread method
-        if sbne.ne_grd_isSetSpreadMethod(gradient['gradientBase']):
-            gradient['features']['spreadMethod'] = sbne.ne_grd_getSpreadMethod(gradient['gradientBase'])
-
-        # get gradient stops
-        stops_ = []
-        for s_index in range(sbne.ne_grd_getNumStops(gradient['gradientBase'])):
-            stop_ = {'gradientStop': sbne.ne_grd_getStop(gradient['gradientBase'], s_index)}
-
-            # get offset
-            if sbne.ne_gstp_isSetOffset(stop_['gradientStop']):
-                stop_['offset'] = \
-                    {'rel': sbne.ne_rav_getRelativeValue(sbne.ne_gstp_getOffset(stop_['gradientStop']))}
-
-            # get stop color
-            if sbne.ne_gstp_isSetColor(stop_['gradientStop']):
-                stop_['color'] = sbne.ne_gstp_getColor(stop_['gradientStop'])
-
-            stops_.append(stop_)
-
-        gradient['features']['stops'] = stops_
-
-        # for linear gradient
-        if sbne.ne_grd_isLinearGradient(gradient['gradientBase']):
-            # get start
-            gradient['features']['start'] = \
-                {'x': {'abs':
-                           sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getX1(gradient['gradientBase'])),
-                       'rel':
-                           sbne.ne_rav_getRelativeValue(sbne.ne_grd_getX1(gradient['gradientBase']))},
-                 'y': {'abs':
-                           sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getY1(gradient['gradientBase'])),
-                       'rel':
-                           sbne.ne_rav_getRelativeValue(sbne.ne_grd_getY1(gradient['gradientBase']))}}
-
-            # get end
-            gradient['features']['end'] = \
-                {'x': {'abs':
-                           sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getX2(gradient['gradientBase'])),
-                       'rel':
-                           sbne.ne_rav_getRelativeValue(sbne.ne_grd_getX2(gradient['gradientBase']))},
-                 'y': {'abs':
-                           sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getY2(gradient['gradientBase'])),
-                       'rel':
-                           sbne.ne_rav_getRelativeValue(sbne.ne_grd_getY2(gradient['gradientBase']))}}
-
-        # for radial gradient
-        elif sbne.ne_grd_isLinearGradient(gradient['gradientBase']):
-            # get center
-            gradient['features']['center'] = \
-                {'x': {'abs':
-                           sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getCx(gradient['gradientBase'])),
-                       'rel':
-                           sbne.ne_rav_getRelativeValue(sbne.ne_grd_getCx(gradient['gradientBase']))},
-                 'y': {'abs':
-                           sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getCy(gradient['gradientBase'])),
-                       'rel':
-                           sbne.ne_rav_getRelativeValue(sbne.ne_grd_getCy(gradient['gradientBase']))}}
-
-            # get focal
-            gradient['features']['focalPoint'] = \
-                {'x': {'abs':
-                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getFx(gradient['gradientBase'])),
-                       'rel':
-                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getFx(gradient['gradientBase']))},
-                 'y': {'abs':
-                       sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getFy(gradient['gradientBase'])),
-                       'rel':
-                       sbne.ne_rav_getRelativeValue(sbne.ne_grd_getFy(gradient['gradientBase']))}}
-
-            # get radius
-            gradient['features']['radius'] = \
-                {'abs': sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getR(gradient['gradientBase'])),
-                 'rel': sbne.ne_rav_getRelativeValue(sbne.ne_grd_getR(gradient['gradientBase']))}
-
-
-def update_line_ending_features(line_ending):
-    line_ending['features'] = {}
-    if line_ending['lineEnding']:
-        # get bounding box features
-        if sbne.ne_le_isSetBoundingBox(line_ending['lineEnding']):
-            bbox = sbne.ne_le_getBoundingBox(line_ending['lineEnding'])
-            line_ending['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
-                                                      'width': sbne.ne_bb_getWidth(bbox),
-                                                      'height': sbne.ne_bb_getHeight(bbox)}
-
-        # get group features
-        if sbne.ne_le_isSetGroup(line_ending['lineEnding']):
-            line_ending['features']['graphicalShape'] = \
-                get_graphical_shape_features(sbne.ne_le_getGroup(line_ending['lineEnding']))
-
-        # get enable rotation
-        if sbne.ne_le_isSetEnableRotation(line_ending['lineEnding']):
-            line_ending['features']['enableRotation'] = sbne.ne_le_getEnableRotation(line_ending['lineEnding'])
-
-
-def find_line_ending(line_ending):
-    for le_index in range(len(lineEndings)):
-        if line_ending == lineEndings[le_index]['id']:
-            return lineEndings[le_index]
-
-
-def update_compartment_features(compartment, extents):
-    compartment['features'] = {}
-    if compartment['compartmentGlyph']:
-        # get bounding box features
-        if sbne.ne_go_isSetBoundingBox(compartment['compartmentGlyph']):
-            bbox = sbne.ne_go_getBoundingBox(compartment['compartmentGlyph'])
-            compartment['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
-                                                      'width': sbne.ne_bb_getWidth(bbox),
-                                                      'height': sbne.ne_bb_getHeight(bbox)}
-
-            extents['minX'] = min(extents['minX'], compartment['features']['boundingBox']['x'])
-            extents['maxX'] = max(extents['maxX'], compartment['features']['boundingBox']['x'] +
-                                  compartment['features']['boundingBox']['width'])
-            extents['minY'] = min(extents['minY'], compartment['features']['boundingBox']['y'])
-            extents['maxY'] = max(extents['maxY'], compartment['features']['boundingBox']['y'] +
-                                  compartment['features']['boundingBox']['height'])
-
-        # get group features
-        if 'style' in list(compartment.keys()) and sbne.ne_stl_isSetGroup(compartment['style']):
-            compartment['features']['graphicalShape'] = \
-                get_graphical_shape_features(sbne.ne_stl_getGroup(compartment['style']))
-
-        # get text features
-        if 'text' in list(compartment.keys()):
-            compartment['text']['features'] = {}
-            # get plain text
-            if sbne.ne_gtxt_isSetPlainText(compartment['text']['textGlyph']):
-                compartment['text']['features']['plainText'] =\
-                    sbne.ne_gtxt_getPlainText(compartment['text']['textGlyph'])
-            elif 'graphicalObject' in list(compartment['text'].keys()):
-                if sbne.ne_ne_isSetName(compartment['text']['graphicalObject']):
-                    compartment['text']['features']['plainText'] =\
-                        sbne.ne_ne_getName(compartment['text']['graphicalObject'])
-                else:
-                    compartment['text']['features']['plainText'] = \
-                        sbne.ne_ne_getId(compartment['text']['graphicalObject'])
-            # get bounding box features of the text glyph
-            if sbne.ne_go_isSetBoundingBox(compartment['text']['textGlyph']):
-                bbox = sbne.ne_go_getBoundingBox(compartment['text']['textGlyph'])
-                compartment['text']['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox),
-                                                                  'y': sbne.ne_bb_getY(bbox),
-                                                                  'width': sbne.ne_bb_getWidth(bbox),
-                                                                  'height': sbne.ne_bb_getHeight(bbox)}
-            # get bounding box features of the species glyph
-            else:
-                compartment['text']['features']['boundingBox'] = compartment['features']['boundingBox']
+    def find_compartment(self, compartment_reference_id):
+        for compartment in self.compartments:
+            if compartment_reference_id == compartment['referenceId']:
+                return compartment
+
+        return None
+
+    def find_species(self, species_reference_id):
+        for species in self.species:
+            if species_reference_id == species['referenceId']:
+                return species
+
+        return None
+
+    def find_reaction(self, reaction_reference_id):
+        for reaction in self.reactions:
+            if reaction_reference_id == reaction['referenceId']:
+                return reaction
+
+        return None
+
+    def find_color(self, color_id):
+        for color in self.colors:
+            if color_id == color['id']:
+                return color
+
+        return None
+
+    def find_color_value(self, color_id, search_among_gradients=True):
+        # search among the gradients
+        if search_among_gradients:
+            for gradient in self.gradients:
+                if color_id == gradient['id'] and 'stops' in list(gradient['features'].keys()):
+                    stop_colors = []
+                    for stop in gradient['features']['stops']:
+                        if 'color' in list(stop.keys()):
+                            stop_colors.append(mcolors.to_rgb(
+                                find_color_value(graph_info,
+                                                 stop['color'])))
+                    if len(stop_colors):
+                        return mcolors.to_hex(np.average(np.array(stop_colors), axis=0).tolist())
+
+        # search among the colors
+        for color in self.colors:
+            if color_id == color['id'] and \
+                    'value' in list(color['features'].keys()):
+                return color['features']['value']
+
+        return color_id
+
+    def find_color_unique_id(self):
+        color_id = "color"
+        k = 0
+        color_found = True
+        while color_found:
+            color_found = False
+            k = k + 1
+            for color in self.colors:
+                if color_id + str(k) == color['id']:
+                    color_found = True
+                    break
+
+        return color_id + str(k)
+
+    def find_line_ending(self, line_ending_id):
+        for line_ending in self.line_endings:
+            if line_ending_id == line_ending['id']:
+                return line_ending
+
+        return None
+
+    def extract_info(self, graph):
+        self.reset_info()
+
+    def extract_entity_features(self):
+        # compartments
+        for compartment in self.compartments:
+            self.extract_compartment_features(compartment)
+
+        # species
+        for species in self.species:
+            self.extract_species_features(species)
+
+        # reactions
+        for reaction in self.reactions:
+            self.extract_reaction_features(reaction)
+
+            # species references
+            if 'speciesReferences' in list(reaction.keys()):
+                species_references = reaction['speciesReferences']
+                for species_reference in species_references:
+                    self.extract_species_reference_features(species_reference)
+
+        # line endings
+        for line_ending in self.line_endings:
+            self.extract_line_ending_features(line_ending)
+
+        # colors
+        for color in self.colors:
+            self.extract_color_features(color)
+
+        # gradients
+        for gradient in self.gradients:
+            self.extract_gradient_features(gradient)
+
+
+class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
+    def __init__(self):
+        super().__init__()
+        self.is_layout_modified = False
+
+    def extract_info(self, graph):
+        super().extract_info(graph)
+
+        sbml_document = sbne.ne_doc_readSBML(graph)
+        if sbml_document:
+            li = sbne.ne_doc_processLayoutInfo(sbml_document)
+            network = sbne.ne_li_getNetwork(li)
+            if network:
+                # if layout is not specified
+                if not sbne.ne_net_isLayoutSpecified(network):
+                    # implement layout algorithm
+                    sbne.ne_li_addLayoutFeaturesToNetowrk(li)
+                    # set its flag to modified
+                    self.is_layout_modified = True
+                # extract layout package info
+                self.extract_layout_package_info(network)
+
+                # render package info
+                ri = sbne.ne_doc_processRenderInfo(sbml_document)
+                veneer = sbne.ne_ri_getVeneer(ri)
+                # if render package is not specified
+                if not sbne.ne_ven_isRenderSpecified(veneer):
+                    # implement render algorithm
+                    sbne.ne_ri_addDefaultRenderFeaturesToVeneer(ri)
+                # extract render package info
+                self.extract_render_package_info(veneer)
+
+                # assign the render styles to each entity
+                self.assign_entity_styles(veneer)
+
+    def extract_layout_package_info(self, network):
+        if sbne.ne_net_isLayoutSpecified(network):
+            # get compartments info
+            for c_index in range(sbne.ne_net_getNumCompartments(network)):
+                self.add_compartment(network, sbne.ne_net_getCompartment(network, c_index))
+
+            # get species info
+            for s_index in range(sbne.ne_net_getNumSpecies(network)):
+                self.add_species(network, sbne.ne_net_getSpecies(network, s_index))
+
+            # get reactions info
+            for r_index in range(sbne.ne_net_getNumReactions(network)):
+                self.add_reaction(network, sbne.ne_net_getReaction(network, r_index))
+
+    def extract_render_package_info(self, veneer):
+        if sbne.ne_ven_isRenderSpecified(veneer):
+            # get colors info
+            for c_index in range(sbne.ne_ven_getNumColors(veneer)):
+                self.add_color(sbne.ne_ven_getColor(veneer, c_index))
+
+            # get gradients info
+            for g_index in range(sbne.ne_ven_getNumGradients(veneer)):
+                self.add_gradient(sbne.ne_ven_getGradient(veneer, g_index))
+
+            # get line ending info
+            for le_index in range(sbne.ne_ven_getNumLineEndings(veneer)):
+                self.add_line_ending(sbne.ne_ven_getLineEnding(veneer, le_index))
+
+    def extract_extents(self, bounding_box):
+        self.extents['minX'] = 0.0
+        self.extents['maxX'] = max(self.extents['maxX'], bounding_box['x'] + bounding_box['width'])
+        self.extents['minY'] = 0.0
+        self.extents['maxY'] = max(self.extents['maxY'], bounding_box['y'] + bounding_box['height'])
+
+    def add_compartment(self, network, compartment_object):
+        if sbne.ne_go_isSetGlyphId(compartment_object):
+            compartment = self.extract_go_object_features(network, compartment_object)
+            self.compartments.append(compartment)
+
+    def add_species(self, network, species_object):
+        if sbne.ne_go_isSetGlyphId(species_object):
+            species = self.extract_go_object_features(network, species_object)
+
+            # set the compartment
+            s_compartment = sbne.ne_spc_getCompartment(species_object)
+            if s_compartment:
+                for c in self.compartments:
+                    if s_compartment == c['referenceId']:
+                        species['compartment'] = c['referenceId']
+                        break
+
+            self.species.append(species)
+
+    def add_reaction(self, network, reaction_object):
+        if sbne.ne_go_isSetGlyphId(reaction_object):
+            reaction = self.extract_go_object_features(network, reaction_object)
+
+            # set the compartment
+            r_compartment = sbne.ne_rxn_findCompartment(reaction_object)
+            if r_compartment:
+                for c in self.compartments:
+                    if r_compartment == c['referenceId']:
+                        reaction['compartment'] = c['referenceId']
+                        break
+
+            # species references
+            reaction['speciesReferences'] = []
+            for sr_index in range(sbne.ne_rxn_getNumSpeciesReferences(reaction_object)):
+                species_reference_object = sbne.ne_rxn_getSpeciesReference(reaction_object, sr_index)
+                if sbne.ne_go_isSetGlyphId(species_reference_object):
+                    species_reference = self.extract_go_object_features(network, species_reference_object)
+                    if sbne.ne_sr_isSetSpecies(species_reference_object):
+                        species_reference['species'] = sbne.ne_ne_getId(sbne.ne_sr_getSpecies(species_reference_object))
+                        species_reference['speciesGlyph'] = \
+                            sbne.ne_go_getGlyphId(sbne.ne_sr_getSpecies(species_reference_object))
+                    if sbne.ne_sr_isSetRole(species_reference_object):
+                        species_reference['role'] = sbne.ne_sr_getRoleAsString(species_reference_object)
+                    reaction['speciesReferences'].append(species_reference)
+
+            self.reactions.append(reaction)
+
+    def add_color(self, color_object):
+        color_ = {}
+        if sbne.ne_ve_isSetId(color_object):
+            color_['colorDefinition'] = color_object
+            color_['id'] = sbne.ne_ve_getId(color_object)
+            self.colors.append(color_)
+
+    def add_gradient(self, gradient_object):
+        gradient_ = {}
+        if sbne.ne_ve_isSetId(gradient_object):
+            gradient_['gradientBase'] = gradient_object
+            gradient_['id'] = sbne.ne_ve_getId(gradient_object)
+            self.gradients.append(gradient_)
+
+    def add_line_ending(self, line_ending_object):
+        line_ending_ = {}
+        if sbne.ne_ve_isSetId(line_ending_object):
+            line_ending_['lineEnding'] = line_ending_object
+            line_ending_['id'] = sbne.ne_ve_getId(line_ending_object)
+            self.line_endings.append(line_ending_)
+
+    def assign_entity_styles(self, veneer):
+        # get compartments style from veneer
+        for compartment in self.compartments:
+            compartment['style'] = sbne.ne_ven_findStyle(veneer, compartment['glyphObject'])
+
+            # get compartment text style from veneer
+            if 'texts' in list(compartment.keys()):
+                for text in compartment['texts']:
+                    if 'glyphObject' in list(text.keys()):
+                        text['style'] = sbne.ne_ven_findStyle(veneer, text['glyphObject'], sbne.ST_TYPE_COMP)
+
+        # get species style from veneer
+        for species in self.species:
+            species['style'] = sbne.ne_ven_findStyle(veneer, species['glyphObject'])
+
+            # get species text style from veneer
+            if 'texts' in list(species.keys()):
+                for text in species['texts']:
+                    if 'glyphObject' in list(text.keys()):
+                        text['style'] = sbne.ne_ven_findStyle(veneer, text['glyphObject'], sbne.ST_TYPE_TXT)
+
+        # get reactions style from veneer
+        for reaction in self.reactions:
+            reaction['style'] = sbne.ne_ven_findStyle(veneer, reaction['glyphObject'])
+
+            # get reaction text style from veneer
+            if 'texts' in list(reaction.keys()):
+                for text in reaction['texts']:
+                    if 'glyphObject' in list(text.keys()):
+                        text['style'] = sbne.ne_ven_findStyle(veneer, text['glyphObject'], sbne.ST_TYPE_TXT)
+
+            # get species references style from veneer
+            if 'speciesReferences' in list(reaction.keys()):
+                for species_reference in reaction['speciesReferences']:
+                    species_reference['style'] = sbne.ne_ven_findStyle(veneer,
+                                                                       species_reference['glyphObject'])
+
+    def extract_go_object_features(self, network, go_object):
+        features = {'glyphObject': go_object, 'referenceId': sbne.ne_ne_getId(go_object),
+                    'id': sbne.ne_go_getGlyphId(go_object)}
+        if sbne.ne_ne_isSetMetaId(go_object):
+            features['metaId'] = sbne.ne_ne_getMetaId(go_object)
+        # text
+        features['texts'] = []
+        for text_index in range(sbne.ne_go_getNumTexts(go_object)):
+            text_object = sbne.ne_go_getText(go_object, text_index)
+            if sbne.ne_go_isSetGlyphId(text_object):
+                features['texts'].append(self.extract_text_object_features(network, text_object))
+        return features
+
+    @staticmethod
+    def extract_text_object_features(network, text_object):
+        text = {'glyphObject': text_object, 'id': sbne.ne_go_getGlyphId(text_object)}
+        if sbne.ne_gtxt_isSetGraphicalObjectId(text_object):
+            text['graphicalObject'] = \
+                sbne.ne_net_getNetworkElement(network,
+                                              sbne.ne_gtxt_getGraphicalObjectId(text_object))
+        elif sbne.ne_gtxt_isSetOriginOfTextId(text_object):
+            text['graphicalObject'] = \
+                sbne.ne_net_getNetworkElement(network,
+                                              sbne.ne_gtxt_getOriginOfTextId(text_object))
+        return text
+
+    def extract_compartment_features(self, compartment):
+        compartment['features'] = self.extract_go_general_features(compartment)
+        if compartment['glyphObject'] and sbne.ne_go_isSetBoundingBox(compartment['glyphObject']):
+            self.extract_extents(compartment['features']['boundingBox'])
+
+    def extract_species_features(self, species):
+        species['features'] = self.extract_go_general_features(species)
+        if species['glyphObject'] and 'text' in list(species.keys()) and self.is_layout_modified:
+            self.fit_text_to_bbox(species['text']['features'])
+
+    def extract_reaction_features(self, reaction):
+        reaction['features'] = self.extract_go_general_features(reaction)
+        if reaction['glyphObject']:
+            # get curve features
+            if sbne.ne_rxn_isSetCurve(reaction['glyphObject']):
+                crv = sbne.ne_rxn_getCurve(reaction['glyphObject'])
+
+                if sbne.ne_crv_getNumElements(crv):
+                    curve_ = []
+                    for e_index in range(sbne.ne_crv_getNumElements(crv)):
+                        element = sbne.ne_crv_getElement(crv, e_index)
+                        start_point = sbne.ne_ls_getStart(element)
+                        end_point = sbne.ne_ls_getEnd(element)
+                        if start_point and end_point:
+                            element_ = {'startX': sbne.ne_point_getX(start_point),
+                                        'startY': sbne.ne_point_getY(start_point),
+                                        'endX': sbne.ne_point_getX(end_point),
+                                        'endY': sbne.ne_point_getY(end_point)}
+                            if sbne.ne_ls_isCubicBezier(element):
+                                base_point1 = sbne.ne_cb_getBasePoint1(element)
+                                base_point2 = sbne.ne_cb_getBasePoint2(element)
+                                if base_point1 and base_point2:
+                                    element_["basePoint1X"] = sbne.ne_point_getX(base_point1)
+                                    element_["basePoint1Y"] = sbne.ne_point_getY(base_point1)
+                                    element_["basePoint2X"] = sbne.ne_point_getX(base_point2)
+                                    element_["basePoint1Y"] = sbne.ne_point_getY(base_point2)
+                            curve_.append(element_)
+                    reaction['features']['curve'] = curve_
+
+                    # get extent box
+                    bbox = sbne.ne_rxn_getExtentBox(reaction['glyphObject'])
+                    if bbox:
+                        reaction['features']['boundingBox'] = {
+                            'x': sbne.ne_bb_getX(bbox) + 0.5 * sbne.ne_bb_getWidth(bbox),
+                            'y': sbne.ne_bb_getY(bbox) + 0.5 * sbne.ne_bb_getHeight(bbox),
+                            'width': 15.0,
+                            'height': 15.0}
 
             # get group features
-            if 'style' in list(compartment['text'].keys()) \
-                    and sbne.ne_stl_isSetGroup(compartment['text']['style']):
-                compartment['text']['features']['graphicalText'] = \
-                    get_text_features(sbne.ne_stl_getGroup(compartment['text']['style']))
+            if 'style' in list(reaction.keys()) and sbne.ne_stl_isSetGroup(reaction['style']):
+                if 'curve' in list(reaction['features'].keys()):
+                    reaction['features']['graphicalCurve'] = \
+                        self.extract_curve_features(sbne.ne_stl_getGroup(reaction['style']))
 
+    def extract_species_reference_features(self, species_reference):
+        species_reference['features'] = {}
+        if species_reference['glyphObject']:
+            # get curve features
+            if sbne.ne_sr_isSetCurve(species_reference['glyphObject']):
+                crv = sbne.ne_sr_getCurve(species_reference['glyphObject'])
 
-def update_species_features(species):
-    species['features'] = {}
-    if species['speciesGlyph']:
-        # get bounding box features
-        if sbne.ne_go_isSetBoundingBox(species['speciesGlyph']):
-            bbox = sbne.ne_go_getBoundingBox(species['speciesGlyph'])
-            species['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
-                                                  'width': sbne.ne_bb_getWidth(bbox),
-                                                  'height': sbne.ne_bb_getHeight(bbox)}
+                if sbne.ne_crv_getNumElements(crv):
+                    curve_ = []
+                    for e_index in range(sbne.ne_crv_getNumElements(crv)):
+                        element = sbne.ne_crv_getElement(crv, e_index)
+                        start_point = sbne.ne_ls_getStart(element)
+                        end_point = sbne.ne_ls_getEnd(element)
+                        if start_point and end_point:
+                            element_ = {'startX': sbne.ne_point_getX(start_point),
+                                        'startY': sbne.ne_point_getY(start_point),
+                                        'endX': sbne.ne_point_getX(end_point),
+                                        'endY': sbne.ne_point_getY(end_point)}
+                            if sbne.ne_ls_isCubicBezier(element):
+                                base_point1 = sbne.ne_cb_getBasePoint1(element)
+                                base_point2 = sbne.ne_cb_getBasePoint2(element)
+                                if base_point1 and base_point2:
+                                    element_['basePoint1X'] = sbne.ne_point_getX(base_point1)
+                                    element_['basePoint1Y'] = sbne.ne_point_getY(base_point1)
+                                    element_['basePoint2X'] = sbne.ne_point_getX(base_point2)
+                                    element_['basePoint2Y'] = sbne.ne_point_getY(base_point2)
 
-        # get group features
-        if 'style' in list(species.keys()) and sbne.ne_stl_isSetGroup(species['style']):
-            species['features']['graphicalShape'] = \
-                get_graphical_shape_features(sbne.ne_stl_getGroup(species['style']))
+                            # set start point and slope
+                            if e_index == 0:
+                                # start point
+                                species_reference['features']['startPoint'] = {'x': element_['startX'],
+                                                                               'y': element_['startY']}
 
-        # get text features
-        if 'text' in list(species.keys()):
-            species['text']['features'] = {}
-            # get plain text
-            if sbne.ne_gtxt_isSetPlainText(species['text']['textGlyph']):
-                species['text']['features']['plainText'] = sbne.ne_gtxt_getPlainText(species['text']['textGlyph'])
-            elif 'graphicalObject' in list(species['text'].keys()):
-                if sbne.ne_ne_isSetName(species['text']['graphicalObject']):
-                    species['text']['features']['plainText'] = \
-                        sbne.ne_ne_getName(species['text']['graphicalObject'])
-                else:
-                    species['text']['features']['plainText'] = \
-                        sbne.ne_ne_getId(species['text']['graphicalObject'])
-            # get bounding box features of the text glyph
-            if 'id' in list(species['text'].keys()) and sbne.ne_go_isSetBoundingBox(species['text']['textGlyph']):
-                bbox = sbne.ne_go_getBoundingBox(species['text']['textGlyph'])
-                species['text']['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox),
-                                                              'y': sbne.ne_bb_getY(bbox),
-                                                              'width': sbne.ne_bb_getWidth(bbox),
-                                                              'height': sbne.ne_bb_getHeight(bbox)}
-            # get bounding box features of the species glyph
-            else:
-                species['text']['features']['boundingBox'] = species['features']['boundingBox']
+                                # start slope
+                                if 'basePoint1X' in list(element_.keys()) \
+                                        and not element_['startX'] == element_['basePoint1X']:
+                                    species_reference['features']['startSlope'] = \
+                                        math.atan2(element_['startY'] - element_['basePoint1Y'],
+                                                   element_['startX'] - element_['basePoint1X'])
+                                else:
+                                    species_reference['features']['startSlope'] = \
+                                        math.atan2(element_['startY'] - element_['endY'],
+                                                   element_['startX'] - element_['endX'])
+
+                            # set end point and slope
+                            if e_index == sbne.ne_crv_getNumElements(crv) - 1:
+                                species_reference['features']['endPoint'] = {'x': element_['endX'],
+                                                                             'y': element_['endY']}
+
+                                # end slope
+                                if 'basePoint2X' in list(element_.keys()) \
+                                        and not element_['endX'] == element_['basePoint2X']:
+                                    species_reference['features']['endSlope'] = \
+                                        math.atan2(element_['endY'] - element_['basePoint2Y'],
+                                                   element_['endX'] - element_['basePoint2X'])
+                                else:
+                                    species_reference['features']['endSlope'] = \
+                                        math.atan2(element_['endY'] - element_['startY'],
+                                                   element_['endX'] - element_['startX'])
+
+                            curve_.append(element_)
+                    species_reference['features']['curve'] = curve_
 
             # get group features
-            if 'style' in list(species['text'].keys()) \
-                    and sbne.ne_stl_isSetGroup(species['text']['style']):
-                species['text']['features']['graphicalText'] = \
-                    get_text_features(sbne.ne_stl_getGroup(species['text']['style']))
+            if 'style' in list(species_reference.keys()) and sbne.ne_stl_isSetGroup(species_reference['style']):
+                species_reference['features']['graphicalCurve'] = \
+                    self.extract_curve_features(sbne.ne_stl_getGroup(species_reference['style']))
 
-            # fit text to its bounding box
-            fit_text_to_bbox(species['text']['features'])
+    def extract_go_general_features(self, go):
+        features = {}
+        if go['glyphObject']:
+            # get bounding box features
+            if sbne.ne_go_isSetBoundingBox(go['glyphObject']):
+                features['boundingBox'] = self.extract_bounding_box_features(go['glyphObject'])
 
+            # get group features
+            if 'style' in list(go.keys()) and sbne.ne_stl_isSetGroup(go['style']):
+                features['graphicalShape'] = \
+                    self.extract_graphical_shape_features(sbne.ne_stl_getGroup(go['style']))
 
-def update_reaction_features(reaction):
-    reaction['features'] = {}
-    if reaction['reactionGlyph']:
-        # get curve features
-        if sbne.ne_rxn_isSetCurve(reaction['reactionGlyph']):
-            crv = sbne.ne_rxn_getCurve(reaction['reactionGlyph'])
+            # get text features
+            if 'texts' in list(go.keys()):
+                for text in go['texts']:
+                    text['features'] = self.extract_go_text_features(text)
+        return features
 
-            if sbne.ne_crv_getNumElements(crv):
-                curve_ = []
-                for e_index in range(sbne.ne_crv_getNumElements(crv)):
-                    element = sbne.ne_crv_getElement(crv, e_index)
-                    start_point = sbne.ne_ls_getStart(element)
-                    end_point = sbne.ne_ls_getEnd(element)
-                    if start_point and end_point:
-                        element_ = {'startX': sbne.ne_point_getX(start_point),
-                                    'startY': sbne.ne_point_getY(start_point),
-                                    'endX': sbne.ne_point_getX(end_point),
-                                    'endY': sbne.ne_point_getY(end_point)}
-                        if sbne.ne_ls_isCubicBezier(element):
-                            base_point1 = sbne.ne_cb_getBasePoint1(element)
-                            base_point2 = sbne.ne_cb_getBasePoint2(element)
-                            if base_point1 and base_point2:
-                                element_["basePoint1X"] = sbne.ne_point_getX(base_point1)
-                                element_["basePoint1Y"] = sbne.ne_point_getY(base_point1)
-                                element_["basePoint2X"] = sbne.ne_point_getX(base_point2)
-                                element_["basePoint1Y"] = sbne.ne_point_getY(base_point2)
-                        curve_.append(element_)
-                reaction['features']['curve'] = curve_
-
-                # get extent box
-                bbox = sbne.ne_rxn_getExtentBox(reaction['reactionGlyph'])
-                if (bbox):
-                    reaction['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox) + 0.5 * sbne.ne_bb_getWidth(bbox),
-                                                           'y': sbne.ne_bb_getY(bbox) + 0.5 * sbne.ne_bb_getHeight(bbox),
-                                                           'width': 15.0,
-                                                           'height': 15.0}
-        # get bounding box features
-        elif sbne.ne_go_isSetBoundingBox(reaction['reactionGlyph']):
-            bbox = sbne.ne_go_getBoundingBox(reaction['reactionGlyph'])
-            reaction['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
-                                                   'width': sbne.ne_bb_getWidth(bbox),
-                                                   'height': sbne.ne_bb_getHeight(bbox)}
-        # get group features
-        if 'style' in list(reaction.keys()) and sbne.ne_stl_isSetGroup(reaction['style']):
-            if 'curve' in list(reaction['features'].keys()):
-                reaction['features']['graphicalCurve'] = \
-                    get_curve_features(sbne.ne_stl_getGroup(reaction['style']))
-            if 'boundingBox' in list(reaction['features'].keys()):
-                reaction['features']['graphicalShape'] = \
-                    get_graphical_shape_features(sbne.ne_stl_getGroup(reaction['style']))
-
-
-def update_species_reference_features(species_reference):
-    species_reference['features'] = {}
-    if species_reference['sReferenceGlyph']:
-        # get curve features
-        if sbne.ne_sr_isSetCurve(species_reference['sReferenceGlyph']):
-            crv = sbne.ne_sr_getCurve(species_reference['sReferenceGlyph'])
-
-            if sbne.ne_crv_getNumElements(crv):
-                curve_ = []
-                for e_index in range(sbne.ne_crv_getNumElements(crv)):
-                    element = sbne.ne_crv_getElement(crv, e_index)
-                    start_point = sbne.ne_ls_getStart(element)
-                    end_point = sbne.ne_ls_getEnd(element)
-                    if start_point and end_point:
-                        element_ = {'startX': sbne.ne_point_getX(start_point),
-                                    'startY': sbne.ne_point_getY(start_point),
-                                    'endX': sbne.ne_point_getX(end_point),
-                                    'endY': sbne.ne_point_getY(end_point)}
-                        if sbne.ne_ls_isCubicBezier(element):
-                            base_point1 = sbne.ne_cb_getBasePoint1(element)
-                            base_point2 = sbne.ne_cb_getBasePoint2(element)
-                            if base_point1 and base_point2:
-                                element_['basePoint1X'] = sbne.ne_point_getX(base_point1)
-                                element_['basePoint1Y'] = sbne.ne_point_getY(base_point1)
-                                element_['basePoint2X'] = sbne.ne_point_getX(base_point2)
-                                element_['basePoint2Y'] = sbne.ne_point_getY(base_point2)
-
-                        # set start point and slope
-                        if e_index == 0:
-                            # start point
-                            species_reference['features']['startPoint'] = {'x': element_['startX'],
-                                                                           'y': element_['startY']}
-
-                            # start slope
-                            if 'basePoint1X' in list(element_.keys()) \
-                                    and not element_['startX'] == element_['basePoint1X']:
-                                species_reference['features']['startSlope'] = \
-                                    math.atan2(element_['startY'] - element_['basePoint1Y'],
-                                               element_['startX'] - element_['basePoint1X'])
-                            else:
-                                species_reference['features']['startSlope'] = \
-                                    math.atan2(element_['startY'] - element_['endY'],
-                                               element_['startX'] - element_['endX'])
-
-                        # set end point and slope
-                        if e_index == sbne.ne_crv_getNumElements(crv) - 1:
-                            species_reference['features']['endPoint'] = {'x': element_['endX'],
-                                                                         'y': element_['endY']}
-
-                            # end slope
-                            if 'basePoint2X' in list(element_.keys()) \
-                                    and not element_['endX'] == element_['basePoint2X']:
-                                species_reference['features']['endSlope'] = \
-                                    math.atan2(element_['endY'] - element_['basePoint2Y'],
-                                               element_['endX'] - element_['basePoint2X'])
-                            else:
-                                species_reference['features']['endSlope'] = \
-                                    math.atan2(element_['endY'] - element_['startY'],
-                                               element_['endX'] - element_['startX'])
-
-                        curve_.append(element_)
-                species_reference['features']['curve'] = curve_
+    def extract_go_text_features(self, text):
+        text_features = {}
+        # get plain text
+        if sbne.ne_gtxt_isSetPlainText(text['glyphObject']):
+            text_features['plainText'] = sbne.ne_gtxt_getPlainText(text['glyphObject'])
+        elif 'graphicalObject' in list(text.keys()):
+            if sbne.ne_ne_isSetName(text['graphicalObject']):
+                text_features['plainText'] = sbne.ne_ne_getName(text['graphicalObject'])
+            else:
+                text_features['plainText'] = sbne.ne_ne_getId(text['graphicalObject'])
+        # get bounding box features of the text glyph
+        if sbne.ne_go_isSetBoundingBox(text['glyphObject']):
+            text_features['boundingBox'] = self.extract_bounding_box_features(text['glyphObject'])
 
         # get group features
-        if 'style' in list(species_reference.keys()) and sbne.ne_stl_isSetGroup(species_reference['style']):
-            species_reference['features']['graphicalCurve'] = \
-                get_curve_features(sbne.ne_stl_getGroup(species_reference['style']))
+        if 'style' in list(text.keys()) \
+                and sbne.ne_stl_isSetGroup(text['style']):
+            text_features['graphicalText'] = self.extract_text_features(sbne.ne_stl_getGroup(text['style']))
+        return text_features
 
+    @staticmethod
+    def extract_color_features(color):
+        color['features'] = {}
+        if color['colorDefinition']:
+            # get color value
+            if sbne.ne_clr_isSetValue(color['colorDefinition']):
+                color['features']['value'] = sbne.ne_clr_getValue(color['colorDefinition'])
 
-def update_text_features(network, go):
-    if 'text' in list(go.keys()) and 'textGlyph' in list(go['text'].keys()):
-        if sbne.ne_go_isSetGlyphId(go['text']['textGlyph']):
-            go['text']['id'] = sbne.ne_go_getGlyphId(go['text']['textGlyph'])
-        if sbne.ne_gtxt_isSetGraphicalObjectId(go['text']['textGlyph']):
-            go['text']['graphicalObject'] = \
-                sbne.ne_net_getNetworkElement(network, sbne.ne_gtxt_getGraphicalObjectId(go['text']['textGlyph']))
-        elif sbne.ne_gtxt_isSetOriginOfTextId(go['text']['textGlyph']):
-            go['text']['graphicalObject'] = \
-                sbne.ne_net_getNetworkElement(network, sbne.ne_gtxt_getOriginOfTextId(go['text']['textGlyph']))
+    @staticmethod
+    def extract_gradient_features(gradient):
+        gradient['features'] = {}
+        if gradient['gradientBase']:
+            # get spread method
+            if sbne.ne_grd_isSetSpreadMethod(gradient['gradientBase']):
+                gradient['features']['spreadMethod'] = sbne.ne_grd_getSpreadMethod(gradient['gradientBase'])
 
+            # get gradient stops
+            stops_ = []
+            for s_index in range(sbne.ne_grd_getNumStops(gradient['gradientBase'])):
+                stop_ = {'gradientStop': sbne.ne_grd_getStop(gradient['gradientBase'], s_index)}
 
-def get_graphical_shape_features(group):
-    graphical_shape_features = {}
-    if group:
+                # get offset
+                if sbne.ne_gstp_isSetOffset(stop_['gradientStop']):
+                    stop_['offset'] = \
+                        {'abs': 0, 'rel': sbne.ne_rav_getRelativeValue(sbne.ne_gstp_getOffset(stop_['gradientStop']))}
+
+                # get stop color
+                if sbne.ne_gstp_isSetColor(stop_['gradientStop']):
+                    stop_['color'] = sbne.ne_gstp_getColor(stop_['gradientStop'])
+
+                stops_.append(stop_)
+
+            gradient['features']['stops'] = stops_
+
+            # for linear gradient
+            if sbne.ne_grd_isLinearGradient(gradient['gradientBase']):
+                # get start
+                gradient['features']['start'] = \
+                    {'x': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getX1(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getX1(gradient['gradientBase']))},
+                     'y': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getY1(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getY1(gradient['gradientBase']))}}
+
+                # get end
+                gradient['features']['end'] = \
+                    {'x': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getX2(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getX2(gradient['gradientBase']))},
+                     'y': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getY2(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getY2(gradient['gradientBase']))}}
+
+            # for radial gradient
+            elif sbne.ne_grd_isLinearGradient(gradient['gradientBase']):
+                # get center
+                gradient['features']['center'] = \
+                    {'x': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getCx(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getCx(gradient['gradientBase']))},
+                     'y': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getCy(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getCy(gradient['gradientBase']))}}
+
+                # get focal
+                gradient['features']['focalPoint'] = \
+                    {'x': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getFx(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getFx(gradient['gradientBase']))},
+                     'y': {'abs':
+                               sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getFy(gradient['gradientBase'])),
+                           'rel':
+                               sbne.ne_rav_getRelativeValue(sbne.ne_grd_getFy(gradient['gradientBase']))}}
+
+                # get radius
+                gradient['features']['radius'] = \
+                    {'abs': sbne.ne_rav_getAbsoluteValue(sbne.ne_grd_getR(gradient['gradientBase'])),
+                     'rel': sbne.ne_rav_getRelativeValue(sbne.ne_grd_getR(gradient['gradientBase']))}
+
+    def extract_line_ending_features(self, line_ending):
+        line_ending['features'] = {}
+        if line_ending['lineEnding']:
+            # get bounding box features
+            if sbne.ne_le_isSetBoundingBox(line_ending['lineEnding']):
+                bbox = sbne.ne_le_getBoundingBox(line_ending['lineEnding'])
+                line_ending['features']['boundingBox'] = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
+                                                          'width': sbne.ne_bb_getWidth(bbox),
+                                                          'height': sbne.ne_bb_getHeight(bbox)}
+
+            # get group features
+            if sbne.ne_le_isSetGroup(line_ending['lineEnding']):
+                line_ending['features']['graphicalShape'] = \
+                    self.extract_graphical_shape_features(sbne.ne_le_getGroup(line_ending['lineEnding']))
+
+            # get enable rotation
+            if sbne.ne_le_isSetEnableRotation(line_ending['lineEnding']):
+                line_ending['features']['enableRotation'] = sbne.ne_le_getEnableRotation(line_ending['lineEnding'])
+
+    def extract_graphical_shape_features(self, group):
+        graphical_shape_info = {}
+        if group:
+            graphical_shape_info = self.extract_render_group_general_features(group)
+            graphical_shape_info['geometricShapes'] = self.extract_render_group_geometric_shapes(group)
+        return graphical_shape_info
+
+    @staticmethod
+    def extract_render_group_general_features(group):
+        render_group_general_features = {}
         # get stroke color
         if sbne.ne_grp_isSetStrokeColor(group):
-            graphical_shape_features['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
+            render_group_general_features['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
 
         # get stroke width
         if sbne.ne_grp_isSetStrokeWidth(group):
-            graphical_shape_features['strokeWidth'] = sbne.ne_grp_getStrokeWidth(group)
+            render_group_general_features['strokeWidth'] = sbne.ne_grp_getStrokeWidth(group)
 
         # get stroke dash array
         if sbne.ne_grp_isSetStrokeDashArray(group):
             dash_array = []
             for d_index in range(sbne.ne_grp_getNumStrokeDashes(group)):
                 dash_array.append(sbne.ne_grp_getStrokeDash(group, d_index))
-            graphical_shape_features['strokeDashArray'] = tuple(dash_array)
+            render_group_general_features['strokeDashArray'] = tuple(dash_array)
 
         # get fill color
         if sbne.ne_grp_isSetFillColor(group):
-            graphical_shape_features['fillColor'] = sbne.ne_grp_getFillColor(group)
+            render_group_general_features['fillColor'] = sbne.ne_grp_getFillColor(group)
 
         # get fill rule
         if sbne.ne_grp_isSetFillRule(group):
-            graphical_shape_features['fillRule'] = sbne.ne_grp_getFillRule(group)
+            render_group_general_features['fillRule'] = sbne.ne_grp_getFillRule(group)
+        return render_group_general_features
 
-        # get geometric shapes
+    def extract_render_group_geometric_shapes(self, group):
+        geometric_shapes = []
         if sbne.ne_grp_getNumGeometricShapes(group):
-            geometric_shapes = []
             for gs_index in range(sbne.ne_grp_getNumGeometricShapes(group)):
                 gs = sbne.ne_grp_getGeometricShape(group, gs_index)
-                geometric_shape_features = {}
+                geometric_shape = {}
+                geometric_shape.update(self.extract_geometric_shape_general_features(gs))
+                geometric_shape.update(self.extract_geometric_shape_exclusive_features(gs))
+                geometric_shapes.append(geometric_shape)
+        return geometric_shapes
 
-                # get geometric shape general features
-                # get stroke color
-                if sbne.ne_gs_isSetStrokeColor(gs):
-                    geometric_shape_features['strokeColor'] = sbne.ne_gs_getStrokeColor(gs)
-
-                # get stroke width
-                if sbne.ne_gs_isSetStrokeWidth(gs):
-                    geometric_shape_features['strokeWidth'] = sbne.ne_gs_getStrokeWidth(gs)
-
-                # get stroke dash array
-                if sbne.ne_gs_isSetStrokeDashArray(gs):
-                    dash_array = []
-                    for d_index in range(sbne.ne_gs_getNumStrokeDashes(gs)):
-                        dash_array.append(sbne.ne_gs_getStrokeDash(gs, d_index))
-                    geometric_shape_features['strokeDashArray'] = tuple(dash_array)
-
-                # get geometric shape specific features
-                get_geometric_shape_exclusive_features(gs, geometric_shape_features)
-
-                geometric_shapes.append(geometric_shape_features)
-
-            graphical_shape_features['geometricShapes'] = geometric_shapes
-
-    return graphical_shape_features
-
-
-def get_curve_features(group):
-    curve_features = {}
-    if group:
+    @staticmethod
+    def extract_geometric_shape_general_features(gs):
+        geometric_shape_general_features = {}
         # get stroke color
-        if sbne.ne_grp_isSetStrokeColor(group):
-            curve_features['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
+        if sbne.ne_gs_isSetStrokeColor(gs):
+            geometric_shape_general_features['strokeColor'] = sbne.ne_gs_getStrokeColor(gs)
 
         # get stroke width
-        if sbne.ne_grp_isSetStrokeWidth(group):
-            curve_features['strokeWidth'] = sbne.ne_grp_getStrokeWidth(group)
+        if sbne.ne_gs_isSetStrokeWidth(gs):
+            geometric_shape_general_features['strokeWidth'] = sbne.ne_gs_getStrokeWidth(gs)
 
         # get stroke dash array
-        if sbne.ne_grp_isSetStrokeDashArray(group):
+        if sbne.ne_gs_isSetStrokeDashArray(gs):
             dash_array = []
-            for d_index in range(sbne.ne_grp_getNumStrokeDashes(group)):
-                dash_array.append(sbne.ne_grp_getStrokeDash(group, d_index))
-            curve_features['strokeDashArray'] = tuple(dash_array)
+            for d_index in range(sbne.ne_gs_getNumStrokeDashes(gs)):
+                dash_array.append(sbne.ne_gs_getStrokeDash(gs, d_index))
+            geometric_shape_general_features['strokeDashArray'] = tuple(dash_array)
+        return geometric_shape_general_features
 
-        # get heads
-        heads_ = {}
-        if sbne.ne_grp_isSetStartHead(group):
-            heads_['start'] = sbne.ne_grp_getStartHead(group)
-        if sbne.ne_grp_isSetEndHead(group):
-            heads_['end'] = sbne.ne_grp_getEndHead(group)
-        if heads_:
-            curve_features['heads'] = heads_
+    def extract_geometric_shape_exclusive_features(self, gs):
+        if sbne.ne_gs_getShape(gs) == 0:
+            return self.extract_image_shape_features(gs)
+        elif sbne.ne_gs_getShape(gs) == 1:
+            return self.extract_curve_shape_features(gs)
+        elif sbne.ne_gs_getShape(gs) == 2:
+            return self.extract_text_shape_features(gs)
+        elif sbne.ne_gs_getShape(gs) == 3:
+            return self.extract_rectangle_shape_features(gs)
+        elif sbne.ne_gs_getShape(gs) == 4:
+            return self.extract_ellipse_shape_features(gs)
+        elif sbne.ne_gs_getShape(gs) == 5:
+            return self.extract_polygon_shape_features(gs)
 
-    return curve_features
+    @staticmethod
+    def extract_curve_features(group):
+        curve_info = {}
+        if group:
+            # get stroke color
+            if sbne.ne_grp_isSetStrokeColor(group):
+                curve_info['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
 
+            # get stroke width
+            if sbne.ne_grp_isSetStrokeWidth(group):
+                curve_info['strokeWidth'] = sbne.ne_grp_getStrokeWidth(group)
 
-def get_text_features(group):
-    text_features = {}
-    if group:
-        # get stroke color
-        if sbne.ne_grp_isSetStrokeColor(group):
-            text_features['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
+            # get stroke dash array
+            if sbne.ne_grp_isSetStrokeDashArray(group):
+                dash_array = []
+                for d_index in range(sbne.ne_grp_getNumStrokeDashes(group)):
+                    dash_array.append(sbne.ne_grp_getStrokeDash(group, d_index))
+                curve_info['strokeDashArray'] = tuple(dash_array)
 
-        # get font family
-        if sbne.ne_grp_isSetFontFamily(group):
-            text_features['fontFamily'] = sbne.ne_grp_getFontFamily(group)
+            # get heads
+            heads_ = {}
+            if sbne.ne_grp_isSetStartHead(group):
+                heads_['start'] = sbne.ne_grp_getStartHead(group)
+            if sbne.ne_grp_isSetEndHead(group):
+                heads_['end'] = sbne.ne_grp_getEndHead(group)
+            if heads_:
+                curve_info['heads'] = heads_
+        return curve_info
 
-        # get font size
-        if sbne.ne_grp_isSetFontSize(group):
-            rel_abs_vec = sbne.ne_grp_getFontSize(group)
-            text_features['fontSize'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+    @staticmethod
+    def extract_text_features(group):
+        text_info = {}
+        if group:
+            # get stroke color
+            if sbne.ne_grp_isSetStrokeColor(group):
+                text_info['strokeColor'] = sbne.ne_grp_getStrokeColor(group)
+
+            # get font family
+            if sbne.ne_grp_isSetFontFamily(group):
+                text_info['fontFamily'] = sbne.ne_grp_getFontFamily(group)
+
+            # get font size
+            if sbne.ne_grp_isSetFontSize(group):
+                rel_abs_vec = sbne.ne_grp_getFontSize(group)
+                text_info['fontSize'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
                                          'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
-        # get font weight
-        if sbne.ne_grp_isSetFontWeight(group):
-            text_features['fontWeight'] = sbne.ne_grp_getFontWeight(group)
+            # get font weight
+            if sbne.ne_grp_isSetFontWeight(group):
+                text_info['fontWeight'] = sbne.ne_grp_getFontWeight(group)
 
-        # get font style
-        if sbne.ne_grp_isSetFontStyle(group):
-            text_features['fontStyle'] = sbne.ne_grp_getFontStyle(group)
+            # get font style
+            if sbne.ne_grp_isSetFontStyle(group):
+                text_info['fontStyle'] = sbne.ne_grp_getFontStyle(group)
 
-        # get horizontal text anchor
-        if sbne.ne_grp_isSetHTextAnchor(group):
-            text_features['hTextAnchor'] = sbne.ne_grp_getHTextAnchor(group)
+            # get horizontal text anchor
+            if sbne.ne_grp_isSetHTextAnchor(group):
+                text_info['hTextAnchor'] = sbne.ne_grp_getHTextAnchor(group)
 
-        # get vertical text anchor
-        if sbne.ne_grp_isSetVTextAnchor(group):
-            text_features['vTextAnchor'] = sbne.ne_grp_getVTextAnchor(group)
+            # get vertical text anchor
+            if sbne.ne_grp_isSetVTextAnchor(group):
+                text_info['vTextAnchor'] = sbne.ne_grp_getVTextAnchor(group)
 
-        # get geometric shapes
-        if sbne.ne_grp_getNumGeometricShapes(group):
-            geometric_shapes = []
-            for gs_index in range(sbne.ne_grp_getNumGeometricShapes(group)):
-                gs = sbne.ne_grp_getGeometricShape(group, gs_index)
+            # get geometric shapes
+            if sbne.ne_grp_getNumGeometricShapes(group):
+                geometric_shapes = []
+                for gs_index in range(sbne.ne_grp_getNumGeometricShapes(group)):
+                    gs = sbne.ne_grp_getGeometricShape(group, gs_index)
 
-                if sbne.ne_gs_getShape(gs) == 1:
-                    geometric_shape_features = {}
+                    if sbne.ne_gs_getShape(gs) == 1:
+                        geometric_shape_features = {}
 
-                    # get stroke color
-                    if sbne.ne_gs_isSetStrokeColor(gs):
-                        geometric_shape_features['strokeColor'] = sbne.ne_gs_getStrokeColor(gs)
+                        # get stroke color
+                        if sbne.ne_gs_isSetStrokeColor(gs):
+                            geometric_shape_features['strokeColor'] = sbne.ne_gs_getStrokeColor(gs)
 
-                    # get geometric shape specific features
-                    get_geometric_shape_exclusive_features(gs, geometric_shape_features)
-                    geometric_shapes.append(geometric_shape_features)
+                        # get geometric shape specific features
+                        get_geometric_shape_exclusive_features(gs, geometric_shape_features)
+                        geometric_shapes.append(geometric_shape_features)
 
-            text_features['geometricShapes'] = geometric_shapes
+                text_info['geometricShapes'] = geometric_shapes
+        return text_info
 
-    return text_features
-
-
-def get_geometric_shape_exclusive_features(gs, geometric_shape_features):
-    # get image shape features
-    if sbne.ne_gs_getShape(gs) == 0:
+    @staticmethod
+    def extract_image_shape_features(image_shape):
         # set shape
-        geometric_shape_features['shape'] = "image"
+        image_shape_info = {'shape': "image"}
 
         # get position x
-        if sbne.ne_img_isSetPositionX(gs):
-            rel_abs_vec = sbne.ne_img_getPositionX(gs)
-            geometric_shape_features['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetPositionX(image_shape):
+            rel_abs_vec = sbne.ne_img_getPositionX(image_shape)
+            image_shape_info['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                     'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position y
-        if sbne.ne_img_isSetPositionY(gs):
-            rel_abs_vec = sbne.ne_img_getPositionY(gs)
-            geometric_shape_features['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetPositionY(image_shape):
+            rel_abs_vec = sbne.ne_img_getPositionY(image_shape)
+            image_shape_info['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                     'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension width
-        if sbne.ne_img_isSetDimensionWidth(gs):
-            rel_abs_vec = sbne.ne_img_getDimensionWidth(gs)
-            geometric_shape_features['width'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                                 'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetDimensionWidth(image_shape):
+            rel_abs_vec = sbne.ne_img_getDimensionWidth(image_shape)
+            image_shape_info['width'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                         'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension height
-        if sbne.ne_img_isSetDimensionHeight(gs):
-            rel_abs_vec = sbne.ne_img_getDimensionHeight(gs)
-            geometric_shape_features['height'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                                  'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_img_isSetDimensionHeight(image_shape):
+            rel_abs_vec = sbne.ne_img_getDimensionHeight(image_shape)
+            image_shape_info['height'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                          'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get href
-        if sbne.ne_img_isSetHref(gs):
-            geometric_shape_features['href'] = sbne.ne_img_getHref(gs)
+        if sbne.ne_img_isSetHref(image_shape):
+            image_shape_info['href'] = sbne.ne_img_getHref(image_shape)
 
-    # get render curve shape features
-    if sbne.ne_gs_getShape(gs) == 1:
+        return image_shape_info
+
+    @staticmethod
+    def extract_curve_shape_features(curve_shape):
         # set shape
-        geometric_shape_features['shape'] = "renderCurve"
+        curve_shape_info = {'shape': "renderCurve"}
 
         vertices_ = []
-        for v_index in range(sbne.ne_rc_getNumVertices(gs)):
-            vertex = sbne.ne_rc_getVertex(gs, v_index)
+        for v_index in range(sbne.ne_rc_getNumVertices(curve_shape)):
+            vertex = sbne.ne_rc_getVertex(curve_shape, v_index)
             vertex_ = {}
             render_point = sbne.ne_vrx_getRenderPoint(vertex)
             if render_point:
@@ -994,153 +840,161 @@ def get_geometric_shape_exclusive_features(gs, geometric_shape_features):
                         rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(base_point2)))
             vertices_.append(vertex_)
 
-        geometric_shape_features['vertices'] = vertices_
+        curve_shape_info['vertices'] = vertices_
 
-    # get text shape features
-    if sbne.ne_gs_getShape(gs) == 2:
+        return curve_shape_info
+
+    @staticmethod
+    def extract_text_shape_features(text_shape):
         # set shape
-        geometric_shape_features['shape'] = "text"
+        text_shape_info = {'shape': "text"}
 
         # get position x
-        if sbne.ne_txt_isSetPositionX(gs):
-            rel_abs_vec = sbne.ne_txt_getPositionX(gs)
-            geometric_shape_features['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_txt_isSetPositionX(text_shape):
+            rel_abs_vec = sbne.ne_txt_getPositionX(text_shape)
+            text_shape_info['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                    'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position y
-        if sbne.ne_txt_isSetPositionY(gs):
-            rel_abs_vec = sbne.ne_txt_getPositionY(gs)
-            geometric_shape_features['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_txt_isSetPositionY(text_shape):
+            rel_abs_vec = sbne.ne_txt_getPositionY(text_shape)
+            text_shape_info['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                    'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get font family
-        if sbne.ne_txt_isSetFontFamily(gs):
-            geometric_shape_features['fontFamily'] = sbne.ne_txt_getFontFamily(gs)
+        if sbne.ne_txt_isSetFontFamily(text_shape):
+            text_shape_info['fontFamily'] = sbne.ne_txt_getFontFamily(text_shape)
 
         # get font size
-        if sbne.ne_txt_isSetFontSize(gs):
+        if sbne.ne_txt_isSetFontSize(text_shape):
             rel_abs_vec = sbne.ne_txt_getFontSize(gs)
-            geometric_shape_features['fontSize'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                                    'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+            text_shape_info['fontSize'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                           'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get font weight
-        if sbne.ne_txt_isSetFontWeight(gs):
-            geometric_shape_features['fontWeight'] = sbne.ne_txt_getFontWeight(gs)
+        if sbne.ne_txt_isSetFontWeight(text_shape):
+            text_shape_info['fontWeight'] = sbne.ne_txt_getFontWeight(text_shape)
 
         # get font style
-        if sbne.ne_txt_isSetFontStyle(gs):
-            geometric_shape_features['fontStyle'] = sbne.ne_grp_getFontStyle(gs)
+        if sbne.ne_txt_isSetFontStyle(text_shape):
+            text_shape_info['fontStyle'] = sbne.ne_grp_getFontStyle(text_shape)
 
         # get horizontal text anchor
-        if sbne.ne_txt_isSetHTextAnchor(gs):
-            geometric_shape_features['hTextAnchor'] = sbne.ne_txt_getHTextAnchor(gs)
+        if sbne.ne_txt_isSetHTextAnchor(text_shape):
+            text_shape_info['hTextAnchor'] = sbne.ne_txt_getHTextAnchor(text_shape)
 
         # get vertical text anchor
-        if sbne.ne_txt_isSetVTextAnchor(gs):
-            geometric_shape_features['vTextAnchor'] = sbne.ne_txt_getVTextAnchor(gs)
+        if sbne.ne_txt_isSetVTextAnchor(text_shape):
+            text_shape_info['vTextAnchor'] = sbne.ne_txt_getVTextAnchor(text_shape)
 
-    # get rectangle shape features
-    elif sbne.ne_gs_getShape(gs) == 3:
+        return text_shape_info
+
+    @staticmethod
+    def extract_rectangle_shape_features(rectangle_shape):
         # set shape
-        geometric_shape_features['shape'] = "rectangle"
+        rectangle_shape_info = {'shape': "rectangle"}
 
         # get fill color
-        if sbne.ne_gs_isSetFillColor(gs):
-            geometric_shape_features['fillColor'] = sbne.ne_gs_getFillColor(gs)
+        if sbne.ne_gs_isSetFillColor(rectangle_shape):
+            rectangle_shape_info['fillColor'] = sbne.ne_gs_getFillColor(rectangle_shape)
 
         # get position x
-        if sbne.ne_rec_isSetPositionX(gs):
-            rel_abs_vec = sbne.ne_rec_getPositionX(gs)
-            geometric_shape_features['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetPositionX(rectangle_shape):
+            rel_abs_vec = sbne.ne_rec_getPositionX(rectangle_shape)
+            rectangle_shape_info['x'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                         'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position y
-        if sbne.ne_rec_isSetPositionY(gs):
-            rel_abs_vec = sbne.ne_rec_getPositionY(gs)
-            geometric_shape_features['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetPositionY(rectangle_shape):
+            rel_abs_vec = sbne.ne_rec_getPositionY(rectangle_shape)
+            rectangle_shape_info['y'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                         'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension width
-        if sbne.ne_rec_isSetDimensionWidth(gs):
-            rel_abs_vec = sbne.ne_rec_getDimensionWidth(gs)
-            geometric_shape_features['width'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                                 'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetDimensionWidth(rectangle_shape):
+            rel_abs_vec = sbne.ne_rec_getDimensionWidth(rectangle_shape)
+            rectangle_shape_info['width'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                             'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension height
-        if sbne.ne_rec_isSetDimensionHeight(gs):
-            rel_abs_vec = sbne.ne_rec_getDimensionHeight(gs)
-            geometric_shape_features['height'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                                  'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetDimensionHeight(rectangle_shape):
+            rel_abs_vec = sbne.ne_rec_getDimensionHeight(rectangle_shape)
+            rectangle_shape_info['height'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get corner curvature radius rx
-        if sbne.ne_rec_isSetCornerCurvatureRX(gs):
-            rel_abs_vec = sbne.ne_rec_getCornerCurvatureRX(gs)
-            geometric_shape_features['rx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetCornerCurvatureRX(rectangle_shape):
+            rel_abs_vec = sbne.ne_rec_getCornerCurvatureRX(rectangle_shape)
+            rectangle_shape_info['rx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                          'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get corner curvature radius ry
-        if sbne.ne_rec_isSetCornerCurvatureRY(gs):
-            rel_abs_vec = sbne.ne_rec_getCornerCurvatureRY(gs)
-            geometric_shape_features['ry'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_rec_isSetCornerCurvatureRY(rectangle_shape):
+            rel_abs_vec = sbne.ne_rec_getCornerCurvatureRY(rectangle_shape)
+            rectangle_shape_info['ry'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                          'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get width/height ratio
-        if sbne.ne_rec_isSetRatio(gs):
-            geometric_shape_features['ratio'] = sbne.ne_rec_getRatio(gs)
+        if sbne.ne_rec_isSetRatio(rectangle_shape):
+            rectangle_shape_info['ratio'] = sbne.ne_rec_getRatio(rectangle_shape)
 
-    # get ellipse shape features
-    elif sbne.ne_gs_getShape(gs) == 4:
+        return rectangle_shape_info
+
+    @staticmethod
+    def extract_ellipse_shape_features(ellipse_shape):
         # set shape
-        geometric_shape_features['shape'] = "ellipse"
+        ellipse_shape_info = {'shape': "ellipse"}
 
         # get fill color
-        if sbne.ne_gs_isSetFillColor(gs):
-            geometric_shape_features['fillColor'] = sbne.ne_gs_getFillColor(gs)
+        if sbne.ne_gs_isSetFillColor(ellipse_shape):
+            ellipse_shape_info['fillColor'] = sbne.ne_gs_getFillColor(ellipse_shape)
 
         # get position cx
-        if sbne.ne_elp_isSetPositionCX(gs):
-            rel_abs_vec = sbne.ne_elp_getPositionCX(gs)
-            geometric_shape_features['cx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetPositionCX(ellipse_shape):
+            rel_abs_vec = sbne.ne_elp_getPositionCX(ellipse_shape)
+            ellipse_shape_info['cx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                        'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get position cy
-        if sbne.ne_elp_isSetPositionCY(gs):
-            rel_abs_vec = sbne.ne_elp_getPositionCY(gs)
-            geometric_shape_features['cy'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetPositionCY(ellipse_shape):
+            rel_abs_vec = sbne.ne_elp_getPositionCY(ellipse_shape)
+            ellipse_shape_info['cy'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                        'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension rx
-        if sbne.ne_elp_isSetDimensionRX(gs):
-            rel_abs_vec = sbne.ne_elp_getDimensionRX(gs)
-            geometric_shape_features['rx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetDimensionRX(ellipse_shape):
+            rel_abs_vec = sbne.ne_elp_getDimensionRX(ellipse_shape)
+            ellipse_shape_info['rx'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                        'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get dimension ry
-        if sbne.ne_elp_isSetDimensionRY(gs):
-            rel_abs_vec = sbne.ne_elp_getDimensionRY(gs)
-            geometric_shape_features['ry'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
-                                              'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
+        if sbne.ne_elp_isSetDimensionRY(ellipse_shape):
+            rel_abs_vec = sbne.ne_elp_getDimensionRY(ellipse_shape)
+            ellipse_shape_info['ry'] = {'abs': sbne.ne_rav_getAbsoluteValue(rel_abs_vec),
+                                        'rel': sbne.ne_rav_getRelativeValue(rel_abs_vec)}
 
         # get radius ratio
-        if sbne.ne_elp_isSetRatio(gs):
-            geometric_shape_features['ratio'] = sbne.ne_elp_getRatio(gs)
+        if sbne.ne_elp_isSetRatio(ellipse_shape):
+            ellipse_shape_info['ratio'] = sbne.ne_elp_getRatio(ellipse_shape)
 
-    # get polygon shape features
-    elif sbne.ne_gs_getShape(gs) == 5:
+        return ellipse_shape_info
+
+    @staticmethod
+    def extract_polygon_shape_features(polygon_shape):
         # set shape
-        geometric_shape_features['shape'] = "polygon"
+        polygon_shape_info = {'shape': "polygon"}
 
         # get fill color
-        if sbne.ne_gs_isSetFillColor(gs):
-            geometric_shape_features['fillColor'] = sbne.ne_gs_getFillColor(gs)
+        if sbne.ne_gs_isSetFillColor(polygon_shape):
+            polygon_shape_info['fillColor'] = sbne.ne_gs_getFillColor(polygon_shape)
 
         # get fill rule
-        if sbne.ne_gs_isSetFillRule(gs):
-            geometric_shape_features['fillRule'] = sbne.ne_gs_getFillRule(gs)
+        if sbne.ne_gs_isSetFillRule(polygon_shape):
+            polygon_shape_info['fillRule'] = sbne.ne_gs_getFillRule(polygon_shape)
 
         vertices_ = []
-        for v_index in range(sbne.ne_plg_getNumVertices(gs)):
-            vertex = sbne.ne_plg_getVertex(gs, v_index)
+        for v_index in range(sbne.ne_plg_getNumVertices(polygon_shape)):
+            vertex = sbne.ne_plg_getVertex(polygon_shape, v_index)
             vertex_ = {}
             render_point = sbne.ne_vrx_getRenderPoint(vertex)
             if render_point:
@@ -1168,568 +1022,2338 @@ def get_geometric_shape_exclusive_features(gs, geometric_shape_features):
                         rel=sbne.ne_rav_getRelativeValue(sbne.ne_rp_getY(base_point2)))
             vertices_.append(vertex_)
 
-        geometric_shape_features['vertices'] = vertices_
+        polygon_shape_info['vertices'] = vertices_
+
+        return polygon_shape_info
+
+    @staticmethod
+    def extract_bounding_box_features(glyph_object):
+        bounding_box = {}
+        if sbne.ne_go_isSetBoundingBox(glyph_object):
+            bbox = sbne.ne_go_getBoundingBox(glyph_object)
+            bounding_box = {'x': sbne.ne_bb_getX(bbox), 'y': sbne.ne_bb_getY(bbox),
+                            'width': sbne.ne_bb_getWidth(bbox),
+                            'height': sbne.ne_bb_getHeight(bbox)}
+        return bounding_box
+
+    @staticmethod
+    def fit_text_to_bbox(text_features):
+        if 'boundingBox' in list(text_features.keys()) \
+                and 'plainText' in list(text_features.keys()) \
+                and 'graphicalText' in list(text_features.keys()) \
+                and 'fontFamily' in list(text_features['graphicalText'].keys()) \
+                and 'fontSize' in list(text_features['graphicalText'].keys()):
+            fp = FontProperties(family=text_features['graphicalText']['fontFamily'],
+                                size=text_features['graphicalText']['fontSize']['abs']
+                                     + 0.01 * text_features['graphicalText']['fontSize']['rel']
+                                     * text_features['boundingBox']['width'])
+            text_width, text_height, text_descent = TextToPath().get_text_width_height_descent(
+                s=text_features['plainText'],
+                prop=fp, ismath=False)
+            char_width = text_width / len(text_features['plainText'])
+            if text_width > text_features['boundingBox']['width'] - char_width:
+                while text_width > text_features['boundingBox']['width'] - char_width:
+                    text_features['plainText'] = text_features['plainText'][:-1]
+                    text_width -= char_width
+                text_features['plainText'] += "."
 
 
-def draw_graphical_shape(ax, features, offest_x=0.0, offest_y=0.0, slope=0.0, z_order=0):
-    if 'boundingBox' in list(features.keys()):
-        if (offest_x or offest_y) and slope:
-            offest_x += 1.5 * math.cos(slope)
-            offest_y += 1.5 * math.sin(slope)
-        bbox_x = features['boundingBox']['x'] + offest_x
-        bbox_y = features['boundingBox']['y'] + offest_y
-        bbox_width = features['boundingBox']['width']
-        bbox_height = features['boundingBox']['height']
+class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
+    def __init__(self):
+        super().__init__()
 
-        # default features
-        stroke_color = 'black'
-        stroke_width = '1.0'
-        stroke_dash_array = 'solid'
-        fill_color = 'white'
+    def extract_info(self, graph_info):
+        super().extract_info(graph_info)
+        self.extract_extents(graph_info)
+        self.extract_entities(graph_info)
 
+    def extract_extents(self, graph_info):
+        if 'position' in list(graph_info.keys()):
+            if 'x' in list(graph_info['position'].keys()):
+                self.extents['minX'] = graph_info['position']['x']
+            if 'y' in list(graph_info['position'].keys()):
+                self.extents['minY'] = graph_info['position']['y']
+        if 'dimensions' in list(graph_info.keys()):
+            if 'width' in list(graph_info['dimensions'].keys()):
+                self.extents['minX'] -= 0.5 * graph_info['dimensions']['width']
+                self.extents['maxX'] = self.extents['minX'] + graph_info['dimensions']['width']
+            if 'height' in list(graph_info['dimensions'].keys()):
+                self.extents['minY'] -= 0.5 * graph_info['dimensions']['height']
+                self.extents['maxY'] = self.extents['minY'] + graph_info['dimensions']['height']
+
+    def extract_entities(self, graph_info):
+        if 'nodes' in list(graph_info.keys()):
+            for node in graph_info['nodes']:
+                if 'style' in list(node.keys()) and 'category' in list(node['style'].keys()):
+                    if node['style']['category'].lower() == "compartment":
+                        self.add_compartment(node)
+                    elif node['style']['category'].lower() == "species":
+                        self.add_species(node)
+                    elif node['style']['category'].lower() == "reaction":
+                        self.add_reaction(node, graph_info)
+
+    def add_compartment(self, compartment_info):
+        compartment_ = {}
+        if 'id' in list(compartment_info.keys()):
+            compartment_['info'] = compartment_info
+            compartment_['id'] = compartment_info['id'] + "_glyph"
+            compartment_['referenceId'] = compartment_info['id']
+            self.compartments.append(compartment_)
+
+    def add_species(self, species_info):
+        species_ = {}
+        if 'id' in list(species_info.keys()):
+            species_['info'] = species_info
+            species_['id'] = species_info['id'] + "_glyph"
+            species_['referenceId'] = species_info['id']
+            self.species.append(species_)
+
+    def add_reaction(self, reaction_info, graph_info):
+        reaction_ = {}
+        if 'id' in list(reaction_info.keys()):
+            reaction_['info'] = reaction_info
+            reaction_['id'] = reaction_info['id'] + "_glyph"
+            reaction_['referenceId'] = reaction_info['id']
+
+            reaction_['speciesReferences'] = []
+            if 'edges' in list(graph_info.keys()):
+                for edge in graph_info['edges']:
+                    if ('start' in list(edge.keys()) and
+                        'node' in list(edge['start'].keys()) and
+                        edge['start']['node'] == reaction_['referenceId']) or \
+                            ('end' in list(edge.keys()) and
+                             'node' in list(edge['end'].keys()) and
+                             edge['end']['node'] == reaction_['referenceId']):
+                        self.add_species_reference(reaction_['speciesReferences'], edge)
+            self.reactions.append(reaction_)
+
+    @staticmethod
+    def add_species_reference(species_references, species_reference_info):
+        species_reference_ = {}
+        if 'id' in list(species_reference_info.keys()):
+            species_reference_['info'] = species_reference_info
+            species_reference_['id'] = species_reference_info['id'] + "_glyph"
+            species_reference_['referenceId'] = species_reference_info['id']
+            species_references.append(species_reference_)
+
+    @staticmethod
+    def add_text(node, text_shape):
+        if "plain-text" in list(text_shape.keys()):
+            node['texts'].append({'id': node['id'] + "_" + text_shape['plain-text'] + "_text",
+                            'plain-text': text_shape['plain-text'], 'info': text_shape})
+
+    def add_color(self, color):
+        if not self.find_color(color):
+            self.colors.append({'id': color})
+
+    def add_line_ending(self, line_ending):
+        if 'name' in list(line_ending.keys()) and not self.find_line_ending(line_ending['name']) and \
+                'shapes' in list(line_ending.keys()) and len(line_ending['shapes']):
+            self.line_endings.append({'id': line_ending['name'], 'info': line_ending})
+
+    def extract_compartment_features(self, compartment):
+        self.extract_node_features(compartment)
+
+    def extract_species_features(self, species):
+        if 'parent' in list(species['info'].keys()):
+            species['compartment'] = species['info']['parent']
+        self.extract_node_features(species)
+
+    def extract_reaction_features(self, reaction):
+        if 'parent' in list(reaction['info'].keys()):
+            reaction['compartment'] = reaction['info']['parent']
+        self.extract_node_features(reaction)
+
+    def extract_species_reference_features(self, species_reference):
+        if 'style' in list(species_reference['info'].keys()) and\
+                'sub-category' in list(species_reference['info']['style'].keys()):
+            species_reference['role'] = species_reference['info']['style']['sub-category']
+        self.extract_edge_features(species_reference)
+
+    def extract_color_features(self, color):
+        if color['id']:
+            if color['id'].startswith("#"):
+                color['features'] = {}
+                color['features']['value'] = color['id']
+                color['id'] = self.find_color_unique_id()
+            elif 'features' not in list(color.keys()) or 'value' not in list(color['features'].keys()):
+                color['features'] = {}
+                color['features']['value'] = webcolors.name_to_hex(color['id'])
+
+    def extract_line_ending_features(self, line_ending):
+        line_ending['features'] = {}
+
+        # get bounding box features
+        line_ending['features']['boundingBox'] = self.get_bounding_box_features(line_ending['info'])
+        offset_x = line_ending['features']['boundingBox']['width']
+        offset_y = 0.5 * line_ending['features']['boundingBox']['height']
+
+            # get features
+        if 'shapes' in list(line_ending['info'].keys()):
+            line_ending['features']['graphicalShape'] = \
+                self.extract_graphical_shape_features(line_ending['info']['shapes'], offset_x, offset_y)
+
+        line_ending['features']['enableRotation'] = True
+
+    def extract_node_features(self, node):
+        node['features'] = {}
+        node['texts'] = []
+        # get bounding box features
+        node['features']['boundingBox'] = self.get_bounding_box_features(node['info'])
+        offset_x = 0.5 * node['features']['boundingBox']['width']
+        offset_y = 0.5 * node['features']['boundingBox']['height']
+
+        # get style features
+        if 'style' in list(node['info'].keys()):
+            if 'name' in list(node['info']['style']):
+                node['features']['styleName'] = node['info']['style']['name']
+            if 'shapes' in list(node['info']['style']):
+                node['features']['graphicalShape'] = \
+                    self.extract_graphical_shape_features(node['info']['style']['shapes'], offset_x, offset_y)
+                for shape in node['info']['style']['shapes']:
+                    if 'shape' in list(shape.keys()) and shape['shape'].lower() == "text":
+                        self.add_text(node, shape)
+
+        # get text features
+        if 'texts' in list(node.keys()):
+            self.extract_text_features(node)
+
+    def extract_edge_features(self, edge):
+        edge['features'] = {}
+        if 'start' in list(edge['info'].keys()):
+            if 'node' in list(edge['info']['start'].keys()):
+                if self.find_species(edge['info']['start']['node']):
+                    edge['species'] = edge['info']['start']['node']
+                    edge['speciesGlyph'] = edge['info']['start']['node'] + "_glyph"
+                elif self.find_reaction(edge['info']['start']['node']):
+                    edge['reaction'] = edge['info']['start']['node']
+                    edge['reactionGlyph'] = edge['info']['start']['node'] + "_glyph"
+            if 'position' in list(edge['info']['start'].keys()):
+                edge['features']['startPoint'] = edge['info']['start']['position']
+        if 'end' in list(edge['info'].keys()):
+            if 'node' in list(edge['info']['end'].keys()):
+                if self.find_species(edge['info']['end']['node']):
+                    edge['species'] = edge['info']['end']['node']
+                    edge['speciesGlyph'] = edge['info']['end']['node'] + "_glyph"
+                elif self.find_reaction(edge['info']['end']['node']):
+                    edge['reaction'] = edge['info']['end']['node']
+                    edge['reaction'] = edge['info']['end']['node'] + "_glyph"
+            if 'position' in list(edge['info']['end'].keys()):
+                edge['features']['endPoint'] = edge['info']['end']['position']
+
+        curve_ = []
+        if 'x' in list(edge['features']['startPoint'].keys()) and \
+                'y' in list(edge['features']['startPoint'].keys()) and \
+                'x' in list(edge['features']['endPoint'].keys()) and \
+                'y' in list(edge['features']['endPoint'].keys()):
+            edge['features']['startSlope'] = math.atan2(
+                edge['features']['startPoint']['y'] - edge['features']['endPoint']['y'],
+                edge['features']['startPoint']['x'] - edge['features']['endPoint']['x'])
+            edge['features']['endSlope'] = math.atan2(
+                edge['features']['endPoint']['y'] - edge['features']['startPoint']['y'],
+                edge['features']['endPoint']['x'] - edge['features']['startPoint']['x'])
+            curve_.append({'startX': edge['features']['startPoint']['x'],
+                           'startY': edge['features']['startPoint']['y'],
+                           'endX': edge['features']['endPoint']['x'],
+                           'endY': edge['features']['endPoint']['y']})
+        edge['features']['curve'] = curve_
+
+        # get style features
+        if 'style' in list(edge['info'].keys()):
+            if 'name' in list(edge['info']['style']):
+                edge['features']['styleName'] = edge['info']['style']['name']
+            if 'shapes' in list(edge['info']['style']) and len(edge['info']['style']['shapes']):
+                edge['features']['graphicalCurve'] = \
+                    self.extract_curve_features(edge['info']['style']['shapes'][0], edge['features']['curve'])
+                if 'arrow-head' in list(edge['info']['style']):
+                    if 'name' in list(edge['info']['style']['arrow-head'].keys()):
+                        edge['features']['graphicalCurve']['heads'] = {
+                            'end': edge['info']['style']['arrow-head']['name']}
+                    self.add_line_ending(edge['info']['style']['arrow-head'])
+
+
+
+    def extract_graphical_shape_features(self, shapes, offset_x=0, offset_y=0):
+        graphical_shape_info = {'geometricShapes': []}
+
+        for shape in list(shapes):
+            if 'shape' in list(shape.keys()):
+                # get geometric shape specific features
+                geometric_shape_info = self.extract_geometric_shape_exclusive_features(shape, offset_x, offset_y)
+
+                # get stroke color
+                if 'stroke' in list(shape.keys()):
+                    geometric_shape_info['strokeColor'] = shape['stroke']
+                    self.add_color(shape['stroke'])
+
+                # get stroke width
+                if 'stroke-width' in list(shape.keys()):
+                    geometric_shape_info['strokeWidth'] = shape['stroke-width']
+
+                if 'shape' in list(geometric_shape_info.keys()):
+                    graphical_shape_info['geometricShapes'].append(geometric_shape_info)
+
+        return graphical_shape_info
+
+    def extract_curve_features(self, shape, curve):
+        curve_info = {}
+        if 'shape' in list(shape.keys()) and shape['shape'].lower() == "line":
+            # get stroke color
+            if 'stroke' in list(shape.keys()):
+                curve_info['strokeColor'] = shape['stroke']
+                self.add_color(shape['stroke'])
+            # get stroke width
+            if 'stroke-width' in list(shape.keys()):
+                curve_info['strokeWidth'] = shape['stroke-width']
+
+            # get bezier features
+            if len(curve):
+                element = curve[0]
+                if 'p1' in list(shape.keys()) and \
+                        'x' in list(shape['p1'].keys()) and 'y' in list(shape['p1'].keys()) and\
+                        'p2' in list(shape.keys()) and \
+                        'x' in list(shape['p2'].keys()) and 'y' in list(shape['p2'].keys()):
+                    if shape['p1']['x'] > 0.0 or shape['p1']['y'] or shape['p2']['x'] or shape['p2']['y']:
+                        element['basePoint1X'] = element['startX'] + 0.01 * shape['p1']['x'] *\
+                                                 (element['endX'] - element['startX'])
+                        element['basePoint1Y'] = element['startY'] + 0.01 * shape['p1']['y'] *\
+                                                 (element['endY'] - element['startY'])
+                        element['basePoint2X'] = element['endX'] + 0.01 * shape['p2']['x'] *\
+                                                 (element['endX'] - element['startX'])
+                        element['basePoint2Y'] = element['endY'] + 0.01 * shape['p2']['y'] *\
+                                                 (element['endY'] - element['startY'])
+
+        return curve_info
+
+    def extract_text_features(self, node):
+        for text in node['texts']:
+            text['features'] = {}
+            # get plain text
+            text['features']['plainText'] = text['plain-text']
+            # get bounding box features of the text glyph
+            text['features']['boundingBox'] = dict(x=node['features']['boundingBox']['x'],
+                                                           y=node['features']['boundingBox']['y'],
+                                                           width=node['features']['boundingBox']['width'],
+                                                           height=node['features']['boundingBox']['height'])
+            graphical_text_info = {}
+            if 'shape' in list(text['info'].keys()) and text['info']['shape'].lower() == "text":
+                # get stroke color
+                if 'color' in list(text['info'].keys()):
+                    graphical_text_info['strokeColor'] = text['info']['color']
+                    self.add_color(text['info']['color'])
+
+                # get position x
+                if 'x' in list(text['info'].keys()):
+                    text['features']['boundingBox']['x'] = text['info']['x'] +\
+                                                           text['features']['boundingBox']['x'] +\
+                                                           0.5 * text['features']['boundingBox']['width']
+
+                # get position y
+                if 'y' in list(text['info'].keys()):
+                    text['features']['boundingBox']['y'] = text['info']['y'] +\
+                                                           text['features']['boundingBox']['y'] +\
+                                                           0.5 * text['features']['boundingBox']['height']
+
+                # get dimension width
+                if 'width' in list(text['info'].keys()):
+                    text['features']['boundingBox']['width'] = text['info']['width']
+
+                # get dimension width
+                if 'height' in list(text['info'].keys()):
+                    text['features']['boundingBox']['height'] = text['info']['height']
+
+                # get font family
+                if 'font-family' in list(text['info'].keys()):
+                    graphical_text_info['fontFamily'] = text['info']['font-family']
+
+                # get font size
+                if 'font-size' in list(text['info'].keys()):
+                    graphical_text_info['fontSize'] = {'abs': text['info']['font-size'], 'rel': 0.0}
+
+                # get font weight
+                if 'font-wight' in list(text['info'].keys()):
+                    graphical_text_info['fontWeight'] = text['info']['font-weight']
+
+                # get font style
+                if 'font-style' in list(text['info'].keys()):
+                    graphical_text_info['fontStyle'] = text['info']['font-style']
+
+                # get horizontal text anchor
+                if 'text-anchor' in list(text['info'].keys()):
+                    graphical_text_info['hTextAnchor'] = text['info']['text-anchor']
+
+                # get vertical text anchor
+                if 'vtext-anchor' in list(text['info'].keys()):
+                    graphical_text_info['vTextAnchor'] = text['info']['vtext-anchor']
+
+            # get group features
+            text['features']['graphicalText'] = graphical_text_info
+
+
+    def extract_geometric_shape_exclusive_features(self, shape, offset_x=0, offset_y=0):
+        if shape['shape'].lower() == "rect":
+            return self.extract_rectangle_shape_features(shape, offset_x, offset_y)
+        elif shape['shape'].lower() == "ellipse":
+            return self.extract_ellipse_shape_features(shape, offset_x, offset_y)
+        elif shape['shape'].lower() == "polygon":
+            return self.extract_polygon_shape_features(shape, offset_x, offset_y)
+        return {}
+
+    def extract_rectangle_shape_features(self, rect_shape, offset_x=0, offset_y=0):
+        rect_shape_info = {'shape': "rectangle"}
+
+        # get fill color
+        if 'fill' in list(rect_shape.keys()):
+            rect_shape_info['fillColor'] = rect_shape['fill']
+            self.add_color(rect_shape['fill'])
+
+        # get position x
+        if 'x' in list(rect_shape.keys()):
+            rect_shape_info['x'] = {'abs': rect_shape['x'] + offset_x, 'rel': 0}
+
+        # get position y
+        if 'y' in list(rect_shape.keys()):
+            rect_shape_info['y'] = {'abs': rect_shape['y'] + offset_y, 'rel': 0}
+
+        # get dimension width
+        if 'width' in list(rect_shape.keys()):
+            rect_shape_info['width'] = {'abs': rect_shape['width'], 'rel': 0}
+
+        # get dimension height
+        if 'height' in list(rect_shape.keys()):
+            rect_shape_info['height'] = {'abs': rect_shape['height'], 'rel': 0}
+
+        # get corner curvature radius rx
+        if 'rx' in list(rect_shape.keys()):
+            rect_shape_info['rx'] = {'abs': rect_shape['rx'], 'rel': 0}
+
+        # get corner curvature radius ry
+        if 'ry' in list(rect_shape.keys()):
+            rect_shape_info['ry'] = {'abs': rect_shape['ry'], 'rel': 0}
+
+        return rect_shape_info
+
+    def extract_ellipse_shape_features(self, ellipse_shape, offset_x=0, offset_y=0):
+        ellipse_shape_info = {'shape': "ellipse"}
+
+        # get fill color
+        if 'fill' in list(ellipse_shape.keys()):
+            ellipse_shape_info['fillColor'] = ellipse_shape['fill']
+            self.add_color(ellipse_shape['fill'])
+
+        # get position cx
+        if 'cx' in list(ellipse_shape.keys()):
+            ellipse_shape_info['cx'] = {'abs': ellipse_shape['cx'] + offset_x, 'rel': 0}
+
+        # get position cy
+        if 'cy' in list(ellipse_shape.keys()):
+            ellipse_shape_info['cy'] = {'abs': ellipse_shape['cy'] + offset_y, 'rel': 0}
+
+        # get dimension rx
+        if 'rx' in list(ellipse_shape.keys()):
+            ellipse_shape_info['rx'] = {'abs': ellipse_shape['rx'], 'rel': 0}
+
+        # get dimension ry
+        if 'ry' in list(ellipse_shape.keys()):
+            ellipse_shape_info['ry'] = {'abs': ellipse_shape['ry'], 'rel': 0}
+
+        return ellipse_shape_info
+
+    def extract_polygon_shape_features(self, polygon_shape, offset_x=0, offset_y=0):
+        polygon_shape_info = {'shape': "polygon"}
+
+        # get fill color
+        if 'fill' in list(polygon_shape.keys()):
+            polygon_shape_info['fillColor'] = polygon_shape['fill']
+            self.add_color(polygon_shape['fill'])
+
+        # set vertices
+        if 'points' in list(polygon_shape.keys()):
+            vertices_ = []
+            for point in polygon_shape['points']:
+                vertex_ = {}
+                if 'x' in list(point.keys()) and 'y' in list(point.keys()):
+                    vertex_['renderPointX'] = {'abs': point['x'] + offset_x, 'rel': 0}
+                    vertex_['renderPointY'] = {'abs': point['y'] + offset_y, 'rel': 0}
+                vertices_.append(vertex_)
+
+            polygon_shape_info['vertices'] = vertices_
+        return polygon_shape_info
+
+    @staticmethod
+    def get_bounding_box_features(info):
+        bounding_box = {'x': 0.0, 'y': 0.0, 'width': 0.0, 'height': 0.0}
+        if 'position' in list(info.keys()) and \
+                'x' in list(info['position'].keys()) and \
+                'y' in list(info['position'].keys()):
+            bounding_box['x'] = info['position']['x']
+            bounding_box['y'] = info['position']['y']
+        if 'dimensions' in list(info.keys()) and \
+                'width' in list(info['dimensions'].keys()) and \
+                'height' in list(info['dimensions'].keys()):
+            bounding_box['x'] -= 0.5 * info['dimensions']['width']
+            bounding_box['y'] -= 0.5 * info['dimensions']['height']
+            bounding_box['width'] = info['dimensions']['width']
+            bounding_box['height'] = info['dimensions']['height']
+        return bounding_box
+
+
+class SBMLGraphInfoExportBase:
+    def __init__(self):
+        self.graph_info = None
+        self.reset()
+
+    def reset(self):
+        self.graph_info = None
+
+    def extract_graph_info(self, graph_info):
+        self.reset()
+        self.graph_info = graph_info
+
+        # update the features of the entities
+        graph_info.extract_entity_features()
+
+        # compartments
+        for c in graph_info.compartments:
+            self.add_compartment(c)
+
+        # species
+        for s in graph_info.species:
+            self.add_species(s)
+
+        # reactions
+        for r in graph_info.reactions:
+            self.add_reaction(r)
+
+    def add_compartment(self, compartment):
+        pass
+
+    def add_species(self, species):
+        pass
+
+    def add_reaction(self, reaction):
+        pass
+
+    def export(self, file_name):
+        pass
+
+
+class SBMLGraphInfoExportToSBMLModel(SBMLGraphInfoExportBase):
+    def __init__(self):
+        super().__init__()
+        self.document = None
+        self.layout = None
+        self.global_render = None
+        self.local_render = None
+        self.layoutns = None
+        self.renderns = None
+
+    def reset(self):
+        super().reset()
+
+    def extract_graph_info(self, graph_info):
+        self.create_model()
+        super().extract_graph_info(graph_info)
+        self.set_layout_dimensions()
+
+        for color in self.graph_info.colors:
+            self.add_color(color)
+
+        for gradient in self.graph_info.gradients:
+            self.add_gradient(gradient)
+
+        for line_ending in self.graph_info.line_endings:
+            self.add_line_ending(line_ending)
+
+    def set_layout_dimensions(self):
+        self.layout.setDimensions(libsbml.Dimensions(self.layoutns,
+                                                     self.graph_info.extents['maxX'] - self.graph_info.extents['minX'],
+                                                     self.graph_info.extents['maxY'] - self.graph_info.extents['minY']))
+
+    @staticmethod
+    def check(value, message):
+        if value == None:
+            raise SystemExit('LibSBML returned a null value trying to ' + message + '.')
+        elif type(value) is int:
+            if value == libsbml.LIBSBML_OPERATION_SUCCESS:
+                return
+            else:
+                err_msg = 'Error encountered trying to ' + message + '.' \
+                          + 'LibSBML returned error code ' + str(value) + ': "' \
+                          + OperationReturnValue_toString(value).strip() + '"'
+                raise SystemExit(err_msg)
+        else:
+            return
+
+    def create_model(self):
+        # document
+        sbmlns = libsbml.SBMLNamespaces(3, 1, "layout", 1)
+        try:
+            self.document = libsbml.SBMLDocument(sbmlns)
+        except ValueError:
+            raise SystemExit('Could not create SBMLDocumention object')
+        self.document.setPkgRequired("layout", False)
+        self.document.enablePackage(libsbml.RenderExtension.getXmlnsL3V1V1(), "render", True)
+        self.document.setPkgRequired("render", False)
+
+        # model
+        model = self.document.createModel()
+        self.check(model, 'create model')
+        self.check(model.setId("__main"), 'setting model id')
+        self.check(model.setMetaId("__main"), 'setting model meta id')
+
+        # layout
+        self.layoutns = libsbml.LayoutPkgNamespaces(3, 1, 1)
+        lmplugin = model.getPlugin("layout")
+        if lmplugin is None:
+            print("[Fatal Error] Layout Extension Level " + str(self.layoutns.getLevel()) +
+                  " Version " + str(self.layoutns.getVersion()) +
+                  " package version " + str(self.layoutns.getPackageVersion()) +
+                  " is not registered.")
+            sys.exit(1)
+        self.layout = lmplugin.createLayout()
+        self.layout.setId("SBMLPlot_Layout")
+
+        # global render
+        self.renderns = libsbml.RenderPkgNamespaces(3, 1, 1)
+        grplugin = lmplugin.getListOfLayouts().getPlugin("render")
+        if grplugin is None:
+            print("[Fatal Error] Render Extension Level " + str(self.renderns.getLevel()) +
+                  " Version " + str(self.renderns.getVersion()) +
+                  " package version " + str(self.renderns.getPackageVersion()) +
+                  " is not registered.")
+            sys.exit(1)
+        self.global_render = grplugin.createGlobalRenderInformation()
+        self.global_render.setId("SBMLPlot_Global_Render")
+
+        # local render
+        lrplugin = self.layout.getPlugin("render")
+        if lrplugin is None:
+            print("[Fatal Error] Render Extension Level " + str(self.renderns.getLevel()) +
+                  " Version " + str(self.renderns.getVersion()) +
+                  " package version " + str(self.renderns.getPackageVersion()) +
+                  " is not registered.")
+            sys.exit(1)
+        self.local_render = lrplugin.createLocalRenderInformation()
+        self.local_render.setId("SBMLPlot_Local_Render")
+        self.local_render.setReferenceRenderInformation("SBMLPlot_Global_Render")
+
+    def add_compartment(self, compartment):
+        if 'referenceId' in list(compartment.keys()):
+            c = self.document.model.createCompartment()
+            self.check(c, 'create compartment ' + compartment['referenceId'])
+            self.check(c.setId(compartment['referenceId']), 'set compartment id')
+            self.check(c.setConstant(True), 'set compartment "constant"')
+            self.check(c.setSize(1), 'set compartment "size"')
+            self.check(c.setSpatialDimensions(3), 'set compartment dimensions')
+            self.add_compartment_glyph(compartment)
+
+    def add_species(self, species):
+        if 'referenceId' in list(species.keys()):
+            s = self.document.model.createSpecies()
+            self.check(s, 'create species ' + species['referenceId'])
+            self.check(s.setId(species['referenceId']), 'set species ' + species['referenceId'] + ' id')
+            if 'compartment' in list(species.keys()):
+                self.check(s.setCompartment(species['compartment']),
+                           'set species' + species['referenceId'] + ' compartment')
+            self.check(s.setConstant(False), 'set "constant" attribute on ' + species['referenceId'])
+            self.check(s.setInitialAmount(0), 'set initial amount for ' + species['id'])
+            self.check(s.setBoundaryCondition(False), 'set "boundaryCondition" on ' + species['id'])
+            self.check(s.setHasOnlySubstanceUnits(False), 'set "hasOnlySubstanceUnits" on ' + species['id'])
+            self.add_species_glyph(species)
+
+    def add_reaction(self, reaction):
+        if 'referenceId' in list(reaction.keys()):
+            r = self.document.model.createReaction()
+            self.check(r, 'create reaction ' + reaction['referenceId'])
+            self.check(r.setId(reaction['referenceId']), 'set reaction ' + reaction['referenceId'] + ' id')
+            self.check(r.setReversible(False), 'set reaction ' + reaction['referenceId'] + ' reversibility flag')
+            self.check(r.setFast(False), 'set reaction ' + reaction['referenceId'] + ' "fast" attribute')
+
+            # species references
+            if 'speciesReferences' in list(reaction.keys()):
+                for sr in reaction['speciesReferences']:
+                    self.add_species_reference(sr, r)
+
+            self.add_reaction_glyph(reaction)
+
+    def add_species_reference(self, species_reference, reaction):
+        if 'referenceId' in list(species_reference.keys()) and \
+                'role' in list(species_reference.keys()) and \
+                'species' in list(species_reference.keys()):
+            sr = None
+            if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "reactant":
+                sr = reaction.createReactant()
+                self.check(sr.setConstant(True),
+                           'set species_reference ' + species_reference['referenceId'] + ' "constant" attribute')
+            elif species_reference['role'].lower() == "product":
+                sr = reaction.createProduct()
+                self.check(sr.setConstant(True),
+                           'set species_reference ' + species_reference['referenceId'] + ' "constant" attribute')
+            else:
+                sr = reaction.createModifier()
+
+            if sr:
+                self.check(sr, 'create species_reference ' + species_reference['referenceId'])
+                self.check(sr.setId(species_reference['referenceId']),
+                           'set species_reference ' + species_reference['referenceId'] + ' id')
+                self.check(sr.setSpecies(species_reference['species']),
+                           'assign species_reference ' + species_reference['referenceId'] + ' species')
+
+    def add_compartment_glyph(self, compartment):
+        if 'id' in list(compartment.keys()):
+            compartment_glyph = self.layout.createCompartmentGlyph()
+            compartment_glyph.setId(compartment['id'])
+            compartment_glyph.setCompartmentId(compartment['referenceId'])
+            self.set_glyph_bounding_box(compartment, compartment_glyph)
+            self.add_local_style(compartment)
+
+            # text
+            if 'texts' in list(compartment.keys()):
+                for text in compartment['texts']:
+                    self.add_text_glyph(text, compartment_glyph)
+
+    def add_species_glyph(self, species):
+        if 'id' in list(species.keys()):
+            species_glyph = self.layout.createSpeciesGlyph()
+            species_glyph.setId(species['id'])
+            species_glyph.setSpeciesId(species['referenceId'])
+            self.set_glyph_bounding_box(species, species_glyph)
+            self.add_local_style(species)
+
+            # text
+            for text in species['texts']:
+                self.add_text_glyph(text, species_glyph)
+
+    def add_reaction_glyph(self, reaction):
+        if 'id' in list(reaction.keys()):
+            reaction_glyph = self.layout.createReactionGlyph()
+            reaction_glyph.setId(reaction['id'])
+            reaction_glyph.setReactionId(reaction['referenceId'])
+            self.set_glyph_bounding_box(reaction, reaction_glyph)
+            self.set_glyph_curve(reaction, reaction_glyph)
+            self.add_local_style(reaction)
+
+            # text
+            for text in reaction['texts']:
+                self.add_text_glyph(text, reaction_glyph)
+
+            # species references
+            if 'speciesReferences' in list(reaction.keys()):
+                for sr in reaction['speciesReferences']:
+                    self.add_species_reference_glyph(sr, reaction_glyph)
+
+    def add_species_reference_glyph(self, species_reference, reaction_glyph):
+        if 'id' in list(species_reference.keys()) and 'speciesGlyph' in list(species_reference.keys()):
+            species_reference_glyph = reaction_glyph.createSpeciesReferenceGlyph()
+            species_reference_glyph.setId(species_reference['id'])
+            species_reference_glyph.setSpeciesGlyphId(species_reference['speciesGlyph'])
+            species_reference_glyph.setSpeciesReferenceId(species_reference['referenceId'])
+            if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "reactant":
+                species_reference_glyph.setRole(libsbml.SPECIES_ROLE_SUBSTRATE)
+            elif species_reference['role'].lower() == "product":
+                species_reference_glyph.setRole(libsbml.SPECIES_ROLE_PRODUCT)
+            self.set_glyph_curve(species_reference, species_reference_glyph)
+            self.add_local_style(species_reference)
+
+    def add_text_glyph(self, text, go_glyph):
+        if 'id' in list(text.keys()):
+            text_glyph = self.layout.createTextGlyph()
+            text_glyph.setId(text['id'])
+            text_glyph.setOriginOfTextId(go_glyph.getId())
+            text_glyph.setGraphicalObjectId(go_glyph.getId())
+            self.set_glyph_bounding_box(text, text_glyph)
+            self.set_text_glyph_plain_text(text, text_glyph)
+            self.add_local_style(text)
+
+    def add_local_style(self, go):
+        if 'features' in list(go.keys()):
+            style = self.local_render.createLocalStyle()
+            if 'styleName' in list(go['features'].keys()):
+                style.setId(go['features']['styleName'])
+            else:
+                style.setId(go['id'] + "_style")
+            style.addId(go['id'])
+            render_group = style.createGroup()
+            self.set_render_group_features(render_group, go['features'])
+
+    def set_glyph_bounding_box(self, go, go_glyph):
+        if 'features' in list(go.keys()) and 'boundingBox' in list(go['features'].keys()):
+            go_glyph.setBoundingBox(libsbml.BoundingBox(self.layoutns,
+                                                        go_glyph.getId() + "_bb",
+                                                        go['features']['boundingBox']['x'],
+                                                        go['features']['boundingBox']['y'],
+                                                        go['features']['boundingBox']['width'],
+                                                        go['features']['boundingBox']['height']))
+
+    def set_glyph_curve(self, go, go_glyph):
+        if 'features' in list(go.keys()) and 'curve' in list(go['features'].keys()):
+            for go_curve_element in go['features']['curve']:
+                if all(k in go_curve_element.keys() for k in ('startX', 'startY', 'endX', 'endY')):
+                    go_glyph_curve = go_glyph.getCurve()
+                    element = None
+                    if all(k in go_curve_element.keys() for k in
+                           ('basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
+                        element = go_glyph_curve.createCubicBezier()
+                        element.setBasePoint1(libsbml.Point(self.layoutns,
+                                                            go_curve_element['basePoint1X'],
+                                                            go_curve_element['basePoint1Y']))
+                        element.setBasePoint2(libsbml.Point(self.layoutns,
+                                                            go_curve_element['basePoint2X'],
+                                                            go_curve_element['basePoint2Y']))
+                    else:
+                        element = go_glyph_curve.createLineSegment()
+                    element.setStart(libsbml.Point(self.layoutns,
+                                                   go_curve_element['startX'],
+                                                   go_curve_element['startY']))
+                    element.setEnd(libsbml.Point(self.layoutns,
+                                                 go_curve_element['endX'],
+                                                 go_curve_element['endY']))
+
+    @staticmethod
+    def set_text_glyph_plain_text(text, text_glyph):
+        if 'features' in list(text.keys()) and 'plainText' in list(text['features'].keys()):
+            text_glyph.setText(text['features']['plainText'])
+
+    def set_render_group_features(self, render_group, features):
         if 'graphicalShape' in list(features.keys()):
-            if 'strokeColor' in list(features['graphicalShape'].keys()):
-                stroke_color = features['graphicalShape']['strokeColor']
-            if 'strokeWidth' in list(features['graphicalShape'].keys()):
-                stroke_width = features['graphicalShape']['strokeWidth']
-            if 'strokeDashArray' in list(features['graphicalShape'].keys()):
-                stroke_dash_array = (0, features['graphicalShape']['strokeDashArray'])
-            if 'fillColor' in list(features['graphicalShape'].keys()):
-                fill_color = features['graphicalShape']['fillColor']
-
+            self.set_group_general_features(render_group, features['graphicalShape'])
             if 'geometricShapes' in list(features['graphicalShape'].keys()):
-                for gs_index in range(len(features['graphicalShape']['geometricShapes'])):
-                    # draw an image
-                    if features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'image':
-                        image_shape = features['graphicalShape']['geometricShapes'][gs_index]
+                for shape in features['graphicalShape']['geometricShapes']:
+                    self.set_group_geometric_shape_features(render_group, shape)
+        if 'graphicalCurve' in list(features.keys()):
+            self.set_group_curve_features(render_group, features['graphicalCurve'])
+        if 'graphicalText' in list(features.keys()):
+            self.set_group_text_features(render_group, features['graphicalText'])
 
-                        # default features
-                        position_x = bbox_x
-                        position_y = bbox_y
-                        dimension_width = bbox_width
-                        dimension_height = bbox_height
+    @staticmethod
+    def set_group_general_features(render_group, features):
+        # stroke color
+        if 'strokeColor' in list(features.keys()):
+            render_group.setStroke(features['strokeColor'])
 
-                        if 'x' in list(image_shape.keys()):
-                            position_x += image_shape['x']['abs'] + \
-                                          0.01 * image_shape['x']['rel'] * bbox_width
-                        if 'y' in list(image_shape.keys()):
-                            position_y += image_shape['y']['abs'] + \
-                                          0.01 * image_shape['y']['rel'] * bbox_height
-                        if 'width' in list(image_shape.keys()):
-                            dimension_width = image_shape['width']['abs'] + \
-                                              0.01 * image_shape['width']['rel'] * bbox_width
-                        if 'height' in list(image_shape.keys()):
-                            dimension_height = image_shape['height']['abs'] + \
-                                               0.01 * image_shape['height']['rel'] * bbox_height
+        # stroke width
+        if 'strokeWidth' in list(features.keys()):
+            render_group.setStrokeWidth(features['strokeWidth'])
 
-                        # add a rounded rectangle to plot
-                        if 'href' in list(image_shape.keys()):
-                            with cbook.get_sample_data(image_shape['href']) as image_file:
-                                image = plt.imread(image_file)
-                                image_axes = ax.imshow(image)
-                                image_axes.set_extent([position_x, position_x + dimension_width, position_y +
-                                                       dimension_height, position_y])
-                                image_axes.set_zorder(z_order)
-                                if offest_x or offest_y:
-                                    image_axes.set_transform(plttransform.Affine2D().
-                                                             rotate_around(offest_x, offest_y, slope) + ax.transData)
+        # fill color
+        if 'fillColor' in list(features.keys()):
+            render_group.setFill(features['fillColor'])
+
+    def set_group_geometric_shape_features(self, render_group, shape):
+        if 'shape' in list(shape.keys()):
+            if shape['shape'] == "image":
+                self.set_image_shape_features(render_group, shape)
+            elif shape['shape'] == "renderCurve":
+                self.set_render_curve_shape_features(render_group, shape)
+            elif shape['shape'] == "text":
+                self.set_text_shape_features(render_group, shape)
+            elif shape['shape'] == "rectangle":
+                self.set_rectangle_shape_features(render_group, shape)
+            elif shape['shape'] == "ellipse":
+                self.set_ellipse_shape_features(render_group, shape)
+            elif shape['shape'] == "polygon":
+                self.set_polygon_shape_features(render_group, shape)
+
+    @staticmethod
+    def set_image_shape_features(render_group, image_shape):
+        render_image = render_group.createImage()
+
+        # x
+        if 'x' in list(image_shape.keys()):
+            render_image.setX(libsbml.RelAbsVector(image_shape['x']['abs'],
+                                                   image_shape['x']['rel']))
+
+        # y
+        if 'y' in list(rectangle_shape.keys()):
+            render_image.setY(libsbml.RelAbsVector(image_shape['y']['abs'],
+                                                   image_shape['y']['rel']))
+
+        # width
+        if 'width' in list(rectangle_shape.keys()):
+            render_image.setWidth(libsbml.RelAbsVector(image_shape['width']['abs'],
+                                                       image_shape['width']['rel']))
+
+        # height
+        if 'height' in list(rectangle_shape.keys()):
+            render_image.setHeight(libsbml.RelAbsVector(image_shape['height']['abs'],
+                                                        image_shape['height']['rel']))
+
+        # href
+        if 'href' in list(rectangle_shape.keys()):
+            render_image.setHref(image_shape['href'])
+
+    def set_render_curve_shape_features(self, render_group, curve_shape):
+        render_curve = render_group.createCurve()
+
+        # stroke color
+        if 'strokeColor' in list(curve_shape.keys()):
+            render_curve.setStroke(curve_shape['strokeColor'])
+
+        # stroke width
+        if 'strokeWidth' in list(curve_shape.keys()):
+            render_curve.setStrokeWidth(curve_shape['strokeWidth'])
+
+        if 'vertices' in list(curve_shape.keys()):
+            for vertex in curve_shape['vertices']:
+                if all(k in vertex.keys() for k in ('basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
+                    render_curve.addElement(libsbml.RenderCubicBezier(self.renderns,
+                                                                      libsbml.RelAbsVector(vertex['basePoint1X']['abs'],
+                                                                                           vertex['basePoint1X'][
+                                                                                               'rel']),
+                                                                      libsbml.RelAbsVector(vertex['basePoint2X']['abs'],
+                                                                                           vertex['basePoint2X'][
+                                                                                               'rel']),
+                                                                      libsbml.RelAbsVector(
+                                                                          vertex['renderPointX']['abs'],
+                                                                          vertex['renderPointX']['rel']),
+                                                                      libsbml.RelAbsVector(
+                                                                          vertex['renderPointY']['abs'],
+                                                                          vertex['renderPointY']['rel'])))
+                else:
+                    render_curve.addElement(libsbml.RenderPoint(self.renderns,
+                                                                libsbml.RelAbsVector(vertex['renderPointX']['abs'],
+                                                                                     vertex['renderPointX']['rel']),
+                                                                libsbml.RelAbsVector(vertex['renderPointY']['abs'],
+                                                                                     vertex['renderPointY']['rel'])))
+
+    @staticmethod
+    def set_text_shape_features(render_group, text_shape):
+        render_text = render_group.createText()
+
+        # stroke color
+        if 'strokeColor' in list(text_shape.keys()):
+            render_text.setStroke(text_shape['strokeColor'])
+
+        # x
+        if 'x' in list(text_shape.keys()):
+            render_text.setX(libsbml.RelAbsVector(text_shape['x']['abs'],
+                                                  text_shape['x']['rel']))
+
+        # y
+        if 'y' in list(text_shape.keys()):
+            render_text.setY(libsbml.RelAbsVector(text_shape['y']['abs'],
+                                                  text_shape['y']['rel']))
+
+        # font family
+        if 'fontFamily' in list(text_shape.keys()):
+            render_text.setFontFamily(text_shape['fontFamily'])
+
+        # font Size
+        if 'fontSize' in list(text_shape.keys()):
+            render_text.setFontSize(libsbml.RelAbsVector(text_shape['fontSize']['abs'],
+                                                         text_shape['fontSize']['rel']))
+
+        # font weight
+        if 'fontWeight' in list(text_shape.keys()):
+            render_text.setFontWeight(text_shape['fontWeight'])
+
+        # font weight
+        if 'fontStyle' in list(text_shape.keys()):
+            render_text.setFontStyle(text_shape['fontStyle'])
+
+        # horizontal text anchor
+        if 'hTextAnchor' in list(text_shape.keys()):
+            render_text.setTextAnchor(text_shape['hTextAnchor'])
+
+        # vertical text anchor
+        if 'vTextAnchor' in list(text_shape.keys()):
+            render_text.setVTextAnchor(text_shape['vTextAnchor'])
+
+    @staticmethod
+    def set_rectangle_shape_features(render_group, rectangle_shape):
+        render_rectangle = render_group.createRectangle()
+
+        # stroke color
+        if 'strokeColor' in list(rectangle_shape.keys()):
+            render_rectangle.setStroke(rectangle_shape['strokeColor'])
+
+        # stroke width
+        if 'strokeWidth' in list(rectangle_shape.keys()):
+            render_rectangle.setStrokeWidth(rectangle_shape['strokeWidth'])
+
+        # fill color
+        if 'fillColor' in list(rectangle_shape.keys()):
+            render_rectangle.setFill(rectangle_shape['fillColor'])
+
+        # x
+        if 'x' in list(rectangle_shape.keys()):
+            render_rectangle.setX(libsbml.RelAbsVector(rectangle_shape['x']['abs'],
+                                                       rectangle_shape['x']['rel']))
+
+        # y
+        if 'y' in list(rectangle_shape.keys()):
+            render_rectangle.setY(libsbml.RelAbsVector(rectangle_shape['y']['abs'],
+                                                       rectangle_shape['y']['rel']))
+
+        # width
+        if 'width' in list(rectangle_shape.keys()):
+            render_rectangle.setWidth(libsbml.RelAbsVector(rectangle_shape['width']['abs'],
+                                                           rectangle_shape['width']['rel']))
+
+        # height
+        if 'height' in list(rectangle_shape.keys()):
+            render_rectangle.setHeight(libsbml.RelAbsVector(rectangle_shape['height']['abs'],
+                                                            rectangle_shape['height']['rel']))
+
+        # ratio
+        if 'ratio' in list(rectangle_shape.keys()):
+            render_rectangle.setRatio(rectangle_shape['ratio'])
+
+        # rx
+        if 'rx' in list(rectangle_shape.keys()):
+            render_rectangle.setRX(libsbml.RelAbsVector(rectangle_shape['rx']['abs'],
+                                                        rectangle_shape['rx']['rel']))
+
+        # ry
+        if 'ry' in list(rectangle_shape.keys()):
+            render_rectangle.setRY(libsbml.RelAbsVector(rectangle_shape['ry']['abs'],
+                                                        rectangle_shape['ry']['rel']))
+
+    @staticmethod
+    def set_ellipse_shape_features(render_group, ellipse_shape):
+        render_ellipse = render_group.createEllipse()
+
+        # stroke color
+        if 'strokeColor' in list(ellipse_shape.keys()):
+            render_ellipse.setStroke(ellipse_shape['strokeColor'])
+
+        # stroke width
+        if 'strokeWidth' in list(ellipse_shape.keys()):
+            render_ellipse.setStrokeWidth(ellipse_shape['strokeWidth'])
+
+        # fill color
+        if 'fillColor' in list(ellipse_shape.keys()):
+            render_ellipse.setFill(ellipse_shape['fillColor'])
+
+        # cx
+        if 'cx' in list(ellipse_shape.keys()):
+            render_ellipse.setCX(libsbml.RelAbsVector(ellipse_shape['cx']['abs'],
+                                                      ellipse_shape['cx']['rel']))
+
+        # cy
+        if 'cy' in list(ellipse_shape.keys()):
+            render_ellipse.setCY(libsbml.RelAbsVector(ellipse_shape['cy']['abs'],
+                                                      ellipse_shape['cy']['rel']))
+
+        # rx
+        if 'rx' in list(ellipse_shape.keys()):
+            render_ellipse.setRX(libsbml.RelAbsVector(ellipse_shape['rx']['abs'],
+                                                      ellipse_shape['rx']['rel']))
+
+        # ry
+        if 'ry' in list(ellipse_shape.keys()):
+            render_ellipse.setRY(libsbml.RelAbsVector(ellipse_shape['ry']['abs'],
+                                                      ellipse_shape['ry']['rel']))
+
+        # ratio
+        if 'ratio' in list(ellipse_shape.keys()):
+            render_ellipse.setRatio(ellipse_shape['ratio'])
+
+    def set_polygon_shape_features(self, render_group, polygon_shape):
+        render_polygon = render_group.createPolygon()
+
+        # stroke color
+        if 'strokeColor' in list(polygon_shape.keys()):
+            render_polygon.setStroke(polygon_shape['strokeColor'])
+
+        # stroke width
+        if 'strokeWidth' in list(polygon_shape.keys()):
+            render_polygon.setStrokeWidth(polygon_shape['strokeWidth'])
+
+        # fill color
+        if 'fillColor' in list(polygon_shape.keys()):
+            render_polygon.setFill(polygon_shape['fillColor'])
+
+        # fill rule
+        if 'fillRule' in list(polygon_shape.keys()):
+            render_polygon.setFillRule(polygon_shape['fillRule'])
+
+        if 'vertices' in list(polygon_shape.keys()):
+            for vertex in polygon_shape['vertices']:
+                if all(k in vertex.keys() for k in ('basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
+                    render_polygon.addElement(libsbml.RenderCubicBezier(self.renderns,
+                                                                        libsbml.RelAbsVector(
+                                                                            vertex['basePoint1X']['abs'],
+                                                                            vertex['basePoint1X']['rel']),
+                                                                        libsbml.RelAbsVector(
+                                                                            vertex['basePoint2X']['abs'],
+                                                                            vertex['basePoint2X']['rel']),
+                                                                        libsbml.RelAbsVector(
+                                                                            vertex['renderPointX']['abs'],
+                                                                            vertex['renderPointX']['rel']),
+                                                                        libsbml.RelAbsVector(
+                                                                            vertex['renderPointY']['abs'],
+                                                                            vertex['renderPointY']['rel'])))
+                else:
+                    render_polygon.addElement(libsbml.RenderPoint(self.renderns,
+                                                                  libsbml.RelAbsVector(vertex['renderPointX']['abs'],
+                                                                                       vertex['renderPointX']['rel']),
+                                                                  libsbml.RelAbsVector(vertex['renderPointY']['abs'],
+                                                                                       vertex['renderPointY']['rel'])))
+
+    @staticmethod
+    def set_group_curve_features(render_group, features):
+        # stroke color
+        if 'strokeColor' in list(features.keys()):
+            render_group.setStroke(features['strokeColor'])
+
+        # stroke width
+        if 'strokeWidth' in list(features.keys()):
+            render_group.setStrokeWidth(features['strokeWidth'])
+
+        # heads
+        if 'heads' in list(features.keys()):
+            if 'start' in list(features['heads'].keys()):
+                render_group.setStartHead(features['heads']['start'])
+            if 'end' in list(features['heads'].keys()):
+                render_group.setEndHead(features['heads']['end'])
+
+    @staticmethod
+    def set_group_text_features(render_group, features):
+        # stroke color
+        if 'strokeColor' in list(features.keys()):
+            render_group.setStroke(features['strokeColor'])
+
+        # font family
+        if 'fontFamily' in list(features.keys()):
+            render_group.setFontFamily(features['fontFamily'])
+
+        # font Size
+        if 'fontSize' in list(features.keys()):
+            render_group.setFontSize(libsbml.RelAbsVector(features['fontSize']['abs'],
+                                                          features['fontSize']['rel']))
+
+        # font weight
+        if 'fontWeight' in list(features.keys()):
+            render_group.setFontWeight(features['fontWeight'])
+
+        # font weight
+        if 'fontStyle' in list(features.keys()):
+            render_group.setFontStyle(features['fontStyle'])
+
+        # horizontal text anchor
+        if 'hTextAnchor' in list(features.keys()):
+            render_group.setTextAnchor(features['hTextAnchor'])
+
+        # vertical text anchor
+        if 'vTextAnchor' in list(features.keys()):
+            render_group.setVTextAnchor(features['vTextAnchor'])
+
+    def add_color(self, color):
+        color_definition = self.global_render.createColorDefinition()
+        color_definition.setId(color['id'])
+        if 'features' in list(color.keys()):
+            color_definition.setValue(color['features']['value'])
+
+    def add_gradient(self, gradient):
+        if 'features' in list(gradient.keys()):
+            gradient_definition = None
+            # linear gradient
+            if 'start' in list(gradient['features'].keys()) and 'end' in list(gradient['features'].keys()):
+                gradient_definition = self.global_render.createLinearGradientDefinition()
+                gradient_definition.setX1(libsbml.RelAbsVector(gradient['features']['start']['x']['abs'],
+                                                               gradient['features']['start']['x']['rel']))
+                gradient_definition.setY1(libsbml.RelAbsVector(gradient['features']['start']['y']['abs'],
+                                                               gradient['features']['start']['y']['rel']))
+                gradient_definition.setX2(libsbml.RelAbsVector(gradient['features']['end']['x']['abs'],
+                                                               gradient['features']['end']['x']['rel']))
+                gradient_definition.setY2(libsbml.RelAbsVector(gradient['features']['end']['y']['abs'],
+                                                               gradient['features']['end']['y']['rel']))
+            # radial gradient
+            elif 'center' in list(gradient['features'].keys()) and \
+                    'focalPoint' in list(gradient['features'].keys() and \
+                                         'radius' in list(gradient['features'].keys())):
+                gradient_definition = self.global_render.createRadialGradientDefinition()
+                gradient_definition.setCx(libsbml.RelAbsVector(gradient['features']['center']['x']['abs'],
+                                                               gradient['features']['center']['x']['rel']))
+                gradient_definition.setCy(libsbml.RelAbsVector(gradient['features']['center']['y']['abs'],
+                                                               gradient['features']['center']['y']['rel']))
+                gradient_definition.setFx(libsbml.RelAbsVector(gradient['features']['focalPoint']['x']['abs'],
+                                                               gradient['features']['focalPoint']['x']['rel']))
+                gradient_definition.setFy(libsbml.RelAbsVector(gradient['features']['focalPoint']['y']['abs'],
+                                                               gradient['features']['focalPoint']['y']['rel']))
+                gradient_definition.setR(libsbml.RelAbsVector(gradient['features']['radius']['abs'],
+                                                              gradient['features']['radius']['rel']))
+
+            if gradient_definition:
+                # spread method
+                if 'spreadMethod' in list(gradient['features'].keys()):
+                    gradient_definition.setSpreadMethod(gradient['features']['spreadMethod'])
+
+                # stops
+                for stop in gradient['features']['stops']:
+                    gradient_stop = gradient_definition.createGradientStop()
+                    if 'offset' in list(stop.keys()):
+                        gradient_stop.setOffset(libsbml.RelAbsVector(stop['offset']['abs'], stop['offset']['rel']))
+                    if 'color' in list(stop.keys()):
+                        gradient_stop.setStopColor(stop['color'])
+
+    def add_line_ending(self, line_ending):
+        line_ending_definition = self.global_render.createLineEnding()
+        line_ending_definition.setId(line_ending['id'])
+        self.set_glyph_bounding_box(line_ending, line_ending_definition)
+        if 'features' in list(line_ending.keys()):
+            render_group = line_ending_definition.createGroup()
+            self.set_render_group_features(render_group, line_ending['features'])
+            if 'enableRotation' in list(line_ending['features'].keys()):
+                line_ending_definition.setEnableRotationalMapping(line_ending['features']['enableRotation'])
+
+    def export(self, file_name):
+        libsbml.writeSBMLToFile(self.document, file_name.split('.')[0] + ".xml")
+
+
+class SBMLGraphInfoExportToMatPlotLib(SBMLGraphInfoExportBase):
+    def __init__(self):
+        self.sbml_figure, self.sbml_axes = plt.subplots()
+        self.sbml_axes.invert_yaxis()
+        self.export_figure_format = ".pdf"
+        super().__init__()
+
+    def reset(self):
+        super().reset()
+        self.sbml_axes.clear()
+        self.sbml_figure.set_size_inches(1.0, 1.0)
+        self.export_figure_format = ".pdf"
+
+    def add_compartment(self, compartment):
+        # compartment
+        if 'features' in list(compartment.keys()):
+            self.add_graphical_shape_to_scene(compartment['features'], z_order=0)
+        # compartment text
+        if 'texts' in list(compartment.keys()):
+            for text in compartment['texts']:
+                if 'features' in list(text.keys()):
+                    self.add_text_to_scene(text['features'])
+
+    def add_species(self, species):
+        # species
+        if 'features' in list(species.keys()):
+            self.add_graphical_shape_to_scene(species['features'], z_order=4)
+        # species text
+        if 'texts' in list(species.keys()):
+            for text in species['texts']:
+                if 'features' in list(text.keys()):
+                    self.add_text_to_scene(text['features'])
+
+    def add_reaction(self, reaction):
+        # reaction
+        if 'features' in list(reaction.keys()):
+            # reaction curve
+            if 'curve' in list(reaction['features']):
+                self.add_curve_to_scene(reaction['features'], z_order=3)
+            # reaction graphical shape
+            elif 'boundingBox' in list(reaction['features']):
+                self.add_graphical_shape_to_scene(reaction['features'], z_order=3)
+
+        # species references
+        if 'speciesReferences' in list(reaction.keys()):
+            for sr in reaction['speciesReferences']:
+                self.add_species_reference(sr)
+
+    def add_species_reference(self, species_reference):
+        if 'features' in list(species_reference.keys()):
+            # species reference
+            self.add_curve_to_scene(species_reference['features'], z_order=1)
+
+            # line endings
+            self.add_line_endings_to_scene(species_reference['features'])
+
+    def add_graphical_shape_to_scene(self, features, offset_x=0.0, offset_y=0.0, slope=0.0, z_order=0):
+        if 'boundingBox' in list(features.keys()):
+            if (offset_x or offset_y) and slope:
+                offset_x += 1.5 * math.cos(slope)
+                offset_y += 1.5 * math.sin(slope)
+            bbox_x = features['boundingBox']['x'] + offset_x
+            bbox_y = features['boundingBox']['y'] + offset_y
+            bbox_width = features['boundingBox']['width']
+            bbox_height = features['boundingBox']['height']
+
+            # default features
+            stroke_color = 'black'
+            stroke_width = '1.0'
+            stroke_dash_array = 'solid'
+            fill_color = 'white'
+
+            if 'graphicalShape' in list(features.keys()):
+                if 'strokeColor' in list(features['graphicalShape'].keys()):
+                    stroke_color = features['graphicalShape']['strokeColor']
+                if 'strokeWidth' in list(features['graphicalShape'].keys()):
+                    stroke_width = features['graphicalShape']['strokeWidth']
+                if 'strokeDashArray' in list(features['graphicalShape'].keys()):
+                    stroke_dash_array = (0, features['graphicalShape']['strokeDashArray'])
+                if 'fillColor' in list(features['graphicalShape'].keys()):
+                    fill_color = features['graphicalShape']['fillColor']
+
+                if 'geometricShapes' in list(features['graphicalShape'].keys()):
+                    for gs_index in range(len(features['graphicalShape']['geometricShapes'])):
+                        # draw an image
+                        if features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'image':
+                            image_shape = features['graphicalShape']['geometricShapes'][gs_index]
+
+                            # default features
+                            position_x = bbox_x
+                            position_y = bbox_y
+                            dimension_width = bbox_width
+                            dimension_height = bbox_height
+
+                            if 'x' in list(image_shape.keys()):
+                                position_x += image_shape['x']['abs'] + \
+                                              0.01 * image_shape['x']['rel'] * bbox_width
+                            if 'y' in list(image_shape.keys()):
+                                position_y += image_shape['y']['abs'] + \
+                                              0.01 * image_shape['y']['rel'] * bbox_height
+                            if 'width' in list(image_shape.keys()):
+                                dimension_width = image_shape['width']['abs'] + \
+                                                  0.01 * image_shape['width']['rel'] * bbox_width
+                            if 'height' in list(image_shape.keys()):
+                                dimension_height = image_shape['height']['abs'] + \
+                                                   0.01 * image_shape['height']['rel'] * bbox_height
+
+                            # add a rounded rectangle to plot
+                            if 'href' in list(image_shape.keys()):
+                                with cbook.get_sample_data(image_shape['href']) as image_file:
+                                    image = plt.imread(image_file)
+                                    image_axes = ax.imshow(image)
+                                    image_axes.set_extent([position_x, position_x + dimension_width, position_y +
+                                                           dimension_height, position_y])
+                                    image_axes.set_zorder(z_order)
+                                    if offset_x or offset_y:
+                                        image_axes.set_transform(plttransform.Affine2D().
+                                                                 rotate_around(offset_x, offset_y,
+                                                                               slope) + self.sbml_axes.transData)
+                                    else:
+                                        image_axes.set_transform(plttransform.Affine2D().
+                                                                 rotate_around(position_x + 0.5 * dimension_width,
+                                                                               position_y + 0.5 * dimension_height,
+                                                                               slope) + self.sbml_axes.transData)
+
+                        # draw a render curve
+                        if features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'renderCurve':
+                            curve_shape = features['graphicalShape']['geometricShapes'][gs_index]
+                            if 'strokeColor' in list(curve_shape.keys()):
+                                stroke_color = curve_shape['strokeColor']
+                            if 'strokeWidth' in list(curve_shape.keys()):
+                                stroke_width = curve_shape['strokeWidth']
+                            if 'strokeDashArray' in list(curve_shape.keys()):
+                                stroke_dash_array = (0, curve_shape['graphicalShape']['strokeDashArray'])
+
+                            curve_features = {'graphicalCurve': {'strokeColor': stroke_color,
+                                                                 'strokeWidth': stroke_width,
+                                                                 'strokeDashArray': stroke_dash_array}}
+
+                            # add a render curve to plot
+                            if 'vertices' in list(curve_shape.keys()):
+                                curve_features['curve'] = []
+                                for v_index in range(len(curve_shape['vertices']) - 1):
+                                    element_ = {'startX': curve_shape['vertices'][v_index]['renderPointX']['abs'] +
+                                                          0.01 * curve_shape['vertices'][v_index]['renderPointX'][
+                                                              'rel'] *
+                                                          bbox_width + bbox_x,
+                                                'startY': curve_shape['vertices'][v_index]['renderPointY']['abs'] +
+                                                          0.01 * curve_shape['vertices'][v_index]['renderPointY'][
+                                                              'rel'] *
+                                                          bbox_height + bbox_y,
+                                                'endX': curve_shape['vertices'][v_index + 1]['renderPointX']['abs'] +
+                                                        0.01 * curve_shape['vertices'][v_index + 1]['renderPointX'][
+                                                            'rel'] *
+                                                        bbox_width + bbox_x,
+                                                'endY': curve_shape['vertices'][v_index + 1]['renderPointY']['abs'] +
+                                                        0.01 * curve_shape['vertices'][v_index + 1]['renderPointY'][
+                                                            'rel'] *
+                                                        bbox_height + + bbox_y}
+
+                                    if 'basePoint1X' in list(curve_shape['vertices'][v_index].keys()):
+                                        element_ = {
+                                            'basePoint1X': curve_shape['vertices'][v_index]['basePoint1X']['abs'] +
+                                                           0.01 * curve_shape['vertices'][v_index]['basePoint1X'][
+                                                               'rel'] *
+                                                           bbox_width + bbox_x,
+                                            'basePoint1Y': curve_shape['vertices'][v_index]['basePoint1Y']['abs'] +
+                                                           0.01 * curve_shape['vertices'][v_index]['basePoint1Y'][
+                                                               'rel'] *
+                                                           bbox_height + bbox_y,
+                                            'basePoint2X': curve_shape['vertices'][v_index]['basePoint2X']['abs'] +
+                                                           0.01 * curve_shape['vertices'][v_index]['basePoint2X'][
+                                                               'rel'] *
+                                                           bbox_width + bbox_x,
+                                            'basePoint2Y': curve_shape['vertices'][v_index]['basePoint2Y']['abs'] +
+                                                           0.01 * curve_shape['vertices'][v_index]['basePoint2Y'][
+                                                               'rel'] *
+                                                           bbox_height + bbox_y}
+
+                                    curve_features['curve'].append(element_)
+
+                                self.add_curve_to_scene(curve_features, z_order=3)
+
+                        # draw a rounded rectangle
+                        elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'rectangle':
+                            rectangle_shape = features['graphicalShape']['geometricShapes'][gs_index]
+
+                            # default features
+                            position_x = bbox_x
+                            position_y = bbox_y
+                            dimension_width = bbox_width
+                            dimension_height = bbox_height
+                            corner_radius = 0.0
+
+                            if 'strokeColor' in list(rectangle_shape.keys()):
+                                stroke_color = rectangle_shape['strokeColor']
+                            if 'strokeWidth' in list(rectangle_shape.keys()):
+                                stroke_width = rectangle_shape['strokeWidth']
+                            if 'strokeDashArray' in list(rectangle_shape.keys()):
+                                stroke_dash_array = (0, rectangle_shape['strokeDashArray'])
+                            if 'fillColor' in list(rectangle_shape.keys()):
+                                fill_color = rectangle_shape['fillColor']
+                            if 'x' in list(rectangle_shape.keys()):
+                                position_x += rectangle_shape['x']['abs'] + \
+                                              0.01 * rectangle_shape['x']['rel'] * bbox_width
+                            if 'y' in list(rectangle_shape.keys()):
+                                position_y += rectangle_shape['y']['abs'] + \
+                                              0.01 * rectangle_shape['y']['rel'] * bbox_height
+                            if 'width' in list(rectangle_shape.keys()):
+                                dimension_width = rectangle_shape['width']['abs'] + \
+                                                  0.01 * rectangle_shape['width']['rel'] * bbox_width
+                            if 'height' in list(rectangle_shape.keys()):
+                                dimension_height = rectangle_shape['height']['abs'] + \
+                                                   0.01 * rectangle_shape['height']['rel'] * bbox_height
+                            if 'ratio' in list(rectangle_shape.keys()) and rectangle_shape['ratio'] > 0.0:
+                                if (bbox_width / bbox_height) <= rectangle_shape['ratio']:
+                                    dimension_width = bbox_width
+                                    dimension_height = bbox_width / rectangle_shape['ratio']
+                                    position_y += 0.5 * (bbox_height - dimension_height)
                                 else:
-                                    image_axes.set_transform(plttransform.Affine2D().
-                                                             rotate_around(position_x + 0.5 * dimension_width,
-                                                                           position_y + 0.5 * dimension_height,
-                                                                           slope) + ax.transData)
+                                    dimension_height = bbox_height
+                                    dimension_width = rectangle_shape['ratio'] * bbox_height
+                                    position_x += 0.5 * (bbox_width - dimension_width)
+                            if 'rx' in list(rectangle_shape.keys()):
+                                corner_radius = rectangle_shape['rx']['abs'] + \
+                                                0.01 * rectangle_shape['rx']['rel'] * 0.5 * (bbox_width + bbox_height)
+                            elif 'ry' in list(rectangle_shape.keys()):
+                                corner_radius = rectangle_shape['ry']['abs'] + \
+                                                0.01 * rectangle_shape['ry']['rel'] * 0.5 * (bbox_width + bbox_height)
 
-                    # draw a render curve
-                    if features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'renderCurve':
-                        curve_shape = features['graphicalShape']['geometricShapes'][gs_index]
-                        if 'strokeColor' in list(curve_shape.keys()):
-                            stroke_color = curve_shape['strokeColor']
-                        if 'strokeWidth' in list(curve_shape.keys()):
-                            stroke_width = curve_shape['strokeWidth']
-                        if 'strokeDashArray' in list(curve_shape.keys()):
-                            stroke_dash_array = (0, curve_shape['graphicalShape']['strokeDashArray'])
-
-                        curve_features = {'graphicalCurve': {'strokeColor': stroke_color,
-                                                             'strokeWidth': stroke_width,
-                                                             'strokeDashArray': stroke_dash_array}}
-
-                        # add a render curve to plot
-                        if 'vertices' in list(curve_shape.keys()):
-                            curve_features['curve'] = []
-                            for v_index in range(len(curve_shape['vertices']) - 1):
-                                element_ = {'startX': curve_shape['vertices'][v_index]['renderPointX']['abs'] +
-                                                      0.01 * curve_shape['vertices'][v_index]['renderPointX']['rel'] *
-                                                      bbox_width + bbox_x,
-                                            'startY': curve_shape['vertices'][v_index]['renderPointY']['abs'] +
-                                                      0.01 * curve_shape['vertices'][v_index]['renderPointY']['rel'] *
-                                                      bbox_height + bbox_y,
-                                            'endX': curve_shape['vertices'][v_index + 1]['renderPointX']['abs'] +
-                                                    0.01 * curve_shape['vertices'][v_index + 1]['renderPointX']['rel'] *
-                                                    bbox_width + bbox_x,
-                                            'endY': curve_shape['vertices'][v_index + 1]['renderPointY']['abs'] +
-                                                    0.01 * curve_shape['vertices'][v_index + 1]['renderPointY']['rel'] *
-                                                    bbox_height + + bbox_y}
-
-                                if 'basePoint1X' in list(curve_shape['vertices'][v_index].keys()):
-                                    element_ = {'basePoint1X': curve_shape['vertices'][v_index]['basePoint1X']['abs'] +
-                                                               0.01 * curve_shape['vertices'][v_index]['basePoint1X'][
-                                                                   'rel'] *
-                                                               bbox_width + bbox_x,
-                                                'basePoint1Y': curve_shape['vertices'][v_index]['basePoint1Y']['abs'] +
-                                                               0.01 * curve_shape['vertices'][v_index]['basePoint1Y'][
-                                                                   'rel'] *
-                                                               bbox_height + bbox_y,
-                                                'basePoint2X': curve_shape['vertices'][v_index]['basePoint2X']['abs'] +
-                                                               0.01 * curve_shape['vertices'][v_index]['basePoint2X'][
-                                                                   'rel'] *
-                                                               bbox_width + bbox_x,
-                                                'basePoint2Y': curve_shape['vertices'][v_index]['basePoint2Y']['abs'] +
-                                                               0.01 * curve_shape['vertices'][v_index]['basePoint2Y'][
-                                                                   'rel'] *
-                                                               bbox_height + bbox_y}
-
-                                curve_features['curve'].append(element_)
-
-                            draw_curve(ax, curve_features, z_order=3)
-
-                    # draw a rounded rectangle
-                    elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'rectangle':
-                        rectangle_shape = features['graphicalShape']['geometricShapes'][gs_index]
-
-                        # default features
-                        position_x = bbox_x
-                        position_y = bbox_y
-                        dimension_width = bbox_width
-                        dimension_height = bbox_height
-                        corner_radius = 0.0
-
-                        if 'strokeColor' in list(rectangle_shape.keys()):
-                            stroke_color = rectangle_shape['strokeColor']
-                        if 'strokeWidth' in list(rectangle_shape.keys()):
-                            stroke_width = rectangle_shape['strokeWidth']
-                        if 'strokeDashArray' in list(rectangle_shape.keys()):
-                            stroke_dash_array = (0, rectangle_shape['strokeDashArray'])
-                        if 'fillColor' in list(rectangle_shape.keys()):
-                            fill_color = rectangle_shape['fillColor']
-                        if 'x' in list(rectangle_shape.keys()):
-                            position_x += rectangle_shape['x']['abs'] + \
-                                          0.01 * rectangle_shape['x']['rel'] * bbox_width
-                        if 'y' in list(rectangle_shape.keys()):
-                            position_y += rectangle_shape['y']['abs'] + \
-                                          0.01 * rectangle_shape['y']['rel'] * bbox_height
-                        if 'width' in list(rectangle_shape.keys()):
-                            dimension_width = rectangle_shape['width']['abs'] + \
-                                              0.01 * rectangle_shape['width']['rel'] * bbox_width
-                        if 'height' in list(rectangle_shape.keys()):
-                            dimension_height = rectangle_shape['height']['abs'] + \
-                                               0.01 * rectangle_shape['height']['rel'] * bbox_height
-                        if 'ratio' in list(rectangle_shape.keys()) and rectangle_shape['ratio'] > 0.0:
-                            if (bbox_width / bbox_height) <= rectangle_shape['ratio']:
-                                dimension_width = bbox_width
-                                dimension_height = bbox_width / rectangle_shape['ratio']
-                                position_y += 0.5 * (bbox_height - dimension_height)
+                            # add a rounded rectangle to plot
+                            fancy_box = FancyBboxPatch((position_x, position_y), dimension_width, dimension_height,
+                                                       edgecolor=self.graph_info.find_color_value(stroke_color, False),
+                                                       facecolor=self.graph_info.find_color_value(fill_color),
+                                                       fill=True,
+                                                       linewidth=stroke_width, linestyle=stroke_dash_array,
+                                                       zorder=z_order, antialiased=True)
+                            fancy_box.set_boxstyle("round", rounding_size=corner_radius)
+                            if offset_x or offset_y:
+                                fancy_box.set_transform(plttransform.Affine2D().
+                                                        rotate_around(offset_x, offset_y,
+                                                                      slope) + self.sbml_axes.transData)
                             else:
-                                dimension_height = bbox_height
-                                dimension_width = rectangle_shape['ratio'] * bbox_height
-                                position_x += 0.5 * (bbox_width - dimension_width)
-                        if 'rx' in list(rectangle_shape.keys()):
-                            corner_radius = rectangle_shape['rx']['abs'] +\
-                                       0.01 * rectangle_shape['rx']['rel'] * 0.5 * (bbox_width + bbox_height)
-                        elif 'ry' in list(rectangle_shape.keys()):
-                            corner_radius = rectangle_shape['ry']['abs'] + \
-                                     0.01 * rectangle_shape['ry']['rel'] * 0.5 * (bbox_width + bbox_height)
+                                fancy_box.set_transform(plttransform.Affine2D().
+                                                        rotate_around(position_x + 0.5 * dimension_width,
+                                                                      position_y + 0.5 * dimension_height,
+                                                                      slope) + self.sbml_axes.transData)
+                            self.sbml_axes.add_patch(fancy_box)
 
-                        # add a rounded rectangle to plot
-                        fancy_box = FancyBboxPatch((position_x, position_y), dimension_width, dimension_height,
-                                                   edgecolor=find_color_value(stroke_color, False),
-                                                   facecolor=find_color_value(fill_color), fill=True,
-                                                   linewidth=stroke_width, linestyle=stroke_dash_array,
-                                                   zorder=z_order, antialiased=True)
-                        fancy_box.set_boxstyle("round", rounding_size=corner_radius)
-                        if offest_x or offest_y:
-                            fancy_box.set_transform(plttransform.Affine2D().
-                                                    rotate_around(offest_x, offest_y, slope) + ax.transData)
-                        else:
-                            fancy_box.set_transform(plttransform.Affine2D().
-                                                    rotate_around(position_x + 0.5 * dimension_width,
-                                                                  position_y + 0.5 * dimension_height,
-                                                                  slope) + ax.transData)
-                        ax.add_patch(fancy_box)
+                        # draw an ellipse
+                        elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'ellipse':
+                            ellipse_shape = features['graphicalShape']['geometricShapes'][gs_index]
 
-                    # draw an ellipse
-                    elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'ellipse':
-                        ellipse_shape = features['graphicalShape']['geometricShapes'][gs_index]
+                            # default features
+                            position_cx = bbox_x
+                            position_cy = bbox_y
+                            dimension_rx = 0.5 * bbox_width
+                            dimension_ry = 0.5 * bbox_height
 
-                        # default features
-                        position_cx = bbox_x
-                        position_cy = bbox_y
-                        dimension_rx = 0.5 * bbox_width
-                        dimension_ry = 0.5 * bbox_height
+                            if 'strokeColor' in list(ellipse_shape.keys()):
+                                stroke_color = ellipse_shape['strokeColor']
+                            if 'strokeWidth' in list(ellipse_shape.keys()):
+                                stroke_width = ellipse_shape['strokeWidth']
+                            if 'strokeDashArray' in list(ellipse_shape.keys()):
+                                stroke_dash_array = (0, ellipse_shape['strokeDashArray'])
+                            if 'fillColor' in list(ellipse_shape.keys()):
+                                fill_color = ellipse_shape['fillColor']
+                            if 'cx' in list(ellipse_shape.keys()):
+                                position_cx += ellipse_shape['cx']['abs'] + 0.01 * ellipse_shape['cx'][
+                                    'rel'] * bbox_width
+                            if 'cy' in list(ellipse_shape.keys()):
+                                position_cy += ellipse_shape['cy']['abs'] + 0.01 * ellipse_shape['cy'][
+                                    'rel'] * bbox_height
+                            if 'rx' in list(ellipse_shape.keys()):
+                                dimension_rx = ellipse_shape['rx']['abs'] + 0.01 * ellipse_shape['rx'][
+                                    'rel'] * bbox_width
+                            if 'ry' in list(ellipse_shape.keys()):
+                                dimension_ry = ellipse_shape['ry']['abs'] + \
+                                               0.01 * ellipse_shape['ry']['rel'] * bbox_height
+                            if 'ratio' in list(ellipse_shape.keys()) and ellipse_shape['ratio'] > 0.0:
+                                if (bbox_width / bbox_height) <= ellipse_shape['ratio']:
+                                    dimension_rx = 0.5 * bbox_width
+                                    dimension_ry = (0.5 * bbox_width / ellipse_shape['ratio'])
+                                else:
+                                    dimension_ry = 0.5 * bbox_height
+                                    dimension_rx = ellipse_shape['ratio'] * 0.5 * bbox_height
 
-                        if 'strokeColor' in list(ellipse_shape.keys()):
-                            stroke_color = ellipse_shape['strokeColor']
-                        if 'strokeWidth' in list(ellipse_shape.keys()):
-                            stroke_width = ellipse_shape['strokeWidth']
-                        if 'strokeDashArray' in list(ellipse_shape.keys()):
-                            stroke_dash_array = (0, ellipse_shape['strokeDashArray'])
-                        if 'fillColor' in list(ellipse_shape.keys()):
-                            fill_color = ellipse_shape['fillColor']
-                        if 'cx' in list(ellipse_shape.keys()):
-                            position_cx += ellipse_shape['cx']['abs'] + 0.01 * ellipse_shape['cx']['rel'] * bbox_width
-                        if 'cy' in list(ellipse_shape.keys()):
-                            position_cy += ellipse_shape['cy']['abs'] + 0.01 * ellipse_shape['cy']['rel'] * bbox_height
-                        if 'rx' in list(ellipse_shape.keys()):
-                            dimension_rx = ellipse_shape['rx']['abs'] + 0.01 * ellipse_shape['rx']['rel'] * bbox_width
-                        if 'ry' in list(ellipse_shape.keys()):
-                            dimension_ry = ellipse_shape['ry']['abs'] + \
-                                           0.01 * ellipse_shape['ry']['rel'] * bbox_height
-                        if 'ratio' in list(ellipse_shape.keys()) and ellipse_shape['ratio'] > 0.0:
-                            if (bbox_width / bbox_height) <= ellipse_shape['ratio']:
-                                dimension_rx = 0.5 * bbox_width
-                                dimension_ry = (0.5 * bbox_width / ellipse_shape['ratio'])
+                            # add an ellipse to plot
+                            ellipse = Ellipse((position_cx, position_cy), 2 * dimension_rx, 2 * dimension_ry,
+                                              edgecolor=self.graph_info.find_color_value(stroke_color, False),
+                                              facecolor=self.graph_info.find_color_value(fill_color), fill=True,
+                                              linewidth=stroke_width, linestyle=stroke_dash_array,
+                                              zorder=z_order, antialiased=True)
+                            if offset_x or offset_y:
+                                ellipse.set_transform(plttransform.Affine2D().rotate_around(offset_x,
+                                                                                            offset_y,
+                                                                                            slope) + self.sbml_axes.transData)
                             else:
-                                dimension_ry = 0.5 * bbox_height
-                                dimension_rx = ellipse_shape['ratio'] * 0.5 * bbox_height
+                                ellipse.set_transform(plttransform.Affine2D().
+                                                      rotate_around(position_cx, position_cy,
+                                                                    slope) + self.sbml_axes.transData)
+                            self.sbml_axes.add_patch(ellipse)
 
-                        # add an ellipse to plot
-                        ellipse = Ellipse((position_cx, position_cy), 2 * dimension_rx, 2 * dimension_ry,
-                                          edgecolor=find_color_value(stroke_color, False),
-                                          facecolor=find_color_value(fill_color), fill=True,
+                        # draw a polygon
+                        elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'polygon':
+                            polygon_shape = features['graphicalShape']['geometricShapes'][gs_index]
+
+                            if 'strokeColor' in list(polygon_shape.keys()):
+                                stroke_color = polygon_shape['strokeColor']
+                            if 'strokeWidth' in list(polygon_shape.keys()):
+                                stroke_width = polygon_shape['strokeWidth']
+                            if 'strokeDashArray' in list(polygon_shape.keys()):
+                                stroke_dash_array = (0, polygon_shape['strokeDashArray'])
+                            if 'fillColor' in list(polygon_shape.keys()):
+                                fill_color = polygon_shape['fillColor']
+                            # if 'fillRule' in list(polygon_shape.keys()):
+                            # fill_rule = polygon_shape['fillRule']
+
+                            # add a polygon to plot
+                            if 'vertices' in list(polygon_shape.keys()):
+                                vertices = np.empty((0, 2))
+                                for v_index in range(len(polygon_shape['vertices'])):
+                                    vertices = np.append(vertices,
+                                                         np.array([[polygon_shape['vertices'][v_index]
+                                                                    ['renderPointX']['abs'] +
+                                                                    0.01 * polygon_shape['vertices'][v_index]
+                                                                    ['renderPointX']['rel'] * bbox_width,
+                                                                    polygon_shape['vertices'][v_index]
+                                                                    ['renderPointY']['abs'] +
+                                                                    0.01 * polygon_shape['vertices'][v_index]
+                                                                    ['renderPointY']['rel'] * bbox_height]]), axis=0)
+
+                                if offset_x or offset_y:
+                                    vertices[:, 0] += offset_x - bbox_width
+                                    vertices[:, 1] += offset_y - 0.5 * bbox_height
+                                    polygon = Polygon(vertices, closed=True,
+                                                      edgecolor=self.graph_info.find_color_value(stroke_color, False),
+                                                      facecolor=self.graph_info.find_color_value(fill_color),
+                                                      fill=True, linewidth=stroke_width, linestyle=stroke_dash_array,
+                                                      antialiased=True)
+                                    polygon.set_transform(
+                                        plttransform.Affine2D().rotate_around(offset_x, offset_y,
+                                                                              slope) + self.sbml_axes.transData)
+                                else:
+                                    polygon = Polygon(vertices, closed=True,
+                                                      edgecolor=self.graph_info.find_color_value(stroke_color, False),
+                                                      facecolor=self.graph_info.find_color_value(fill_color),
+                                                      fill=True, linewidth=stroke_width, linestyle=stroke_dash_array,
+                                                      zorder=z_order, antialiased=True)
+                                self.sbml_axes.add_patch(polygon)
+
+                else:
+                    # add a simple rectangle to plot
+                    rectangle = Rectangle((bbox_x, bbox_y), bbox_width, bbox_height, slope * (180.0 / math.pi),
+                                          edgecolor=self.graph_info.find_color_value(stroke_color, False),
+                                          facecolor=self.graph_info.find_color_value(fill_color), fill=True,
                                           linewidth=stroke_width, linestyle=stroke_dash_array,
                                           zorder=z_order, antialiased=True)
-                        if offest_x or offest_y:
-                            ellipse.set_transform(plttransform.Affine2D().rotate_around(offest_x,
-                                                                                        offest_y, slope) + ax.transData)
-                        else:
-                            ellipse.set_transform(plttransform.Affine2D().
-                                                  rotate_around(position_cx, position_cy, slope) + ax.transData)
-                        ax.add_patch(ellipse)
+                    self.sbml_axes.add_patch(rectangle)
 
-                    # draw a polygon
-                    elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'polygon':
-                        polygon_shape = features['graphicalShape']['geometricShapes'][gs_index]
+    def add_curve_to_scene(self, features, z_order=1):
+        if 'curve' in list(features.keys()):
+            # default features
+            stroke_color = 'black'
+            stroke_width = '1.0'
+            stroke_dash_array = 'solid'
 
-                        if 'strokeColor' in list(polygon_shape.keys()):
-                            stroke_color = polygon_shape['strokeColor']
-                        if 'strokeWidth' in list(polygon_shape.keys()):
-                            stroke_width = polygon_shape['strokeWidth']
-                        if 'strokeDashArray' in list(polygon_shape.keys()):
-                            stroke_dash_array = (0, polygon_shape['strokeDashArray'])
-                        if 'fillColor' in list(polygon_shape.keys()):
-                            fill_color = polygon_shape['fillColor']
-                        # if 'fillRule' in list(polygon_shape.keys()):
-                        # fill_rule = polygon_shape['fillRule']
+            if 'graphicalCurve' in list(features.keys()):
+                if 'strokeColor' in list(features['graphicalCurve'].keys()):
+                    stroke_color = features['graphicalCurve']['strokeColor']
+                if 'strokeWidth' in list(features['graphicalCurve'].keys()):
+                    stroke_width = features['graphicalCurve']['strokeWidth']
+                if 'strokeDashArray' in list(features['graphicalCurve'].keys()) \
+                        and not features['graphicalCurve']['strokeDashArray'] == 'solid':
+                    stroke_dash_array = (0, features['graphicalCurve']['strokeDashArray'])
 
-                        # add a polygon to plot
-                        if 'vertices' in list(polygon_shape.keys()):
-                            vertices = np.empty((0, 2))
-                            for v_index in range(len(polygon_shape['vertices'])):
-                                vertices = np.append(vertices,
-                                                     np.array([[polygon_shape['vertices'][v_index]
-                                                                ['renderPointX']['abs'] +
-                                                                0.01 * polygon_shape['vertices'][v_index]
-                                                                ['renderPointX']['rel'] * bbox_width,
-                                                                polygon_shape['vertices'][v_index]
-                                                                ['renderPointY']['abs'] +
-                                                                0.01 * polygon_shape['vertices'][v_index]
-                                                                ['renderPointY']['rel'] * bbox_height]]), axis=0)
+            for v_index in range(len(features['curve'])):
+                vertices = [(features['curve'][v_index]['startX'], features['curve'][v_index]['startY'])]
+                codes = [Path.MOVETO]
+                if 'basePoint1X' in list(features['curve'][v_index].keys()):
+                    vertices.append(
+                        (features['curve'][v_index]['basePoint1X'], features['curve'][v_index]['basePoint1Y']))
+                    vertices.append(
+                        (features['curve'][v_index]['basePoint2X'], features['curve'][v_index]['basePoint2Y']))
+                    codes.append(Path.CURVE4)
+                    codes.append(Path.CURVE4)
+                    codes.append(Path.CURVE4)
+                else:
+                    codes.append(Path.LINETO)
+                vertices.append((features['curve'][v_index]['endX'], features['curve'][v_index]['endY']))
 
-                            if offest_x or offest_y:
-                                vertices[:, 0] += offest_x - bbox_width
-                                vertices[:, 1] += offest_y - 0.5 * bbox_height
-                                polygon = Polygon(vertices, closed=True,
-                                                  edgecolor=find_color_value(stroke_color, False),
-                                                  facecolor=find_color_value(fill_color),
-                                                  fill=True, linewidth=stroke_width, linestyle=stroke_dash_array,
-                                                  antialiased=True)
-                                polygon.set_transform(
-                                    plttransform.Affine2D().rotate_around(offest_x, offest_y, slope) + ax.transData)
+                # draw a curve
+                curve = PathPatch(Path(vertices, codes),
+                                  edgecolor=self.graph_info.find_color_value(stroke_color, False),
+                                  facecolor='none', linewidth=stroke_width, linestyle=stroke_dash_array,
+                                  capstyle='butt', zorder=z_order, antialiased=True)
+                self.sbml_axes.add_patch(curve)
+
+    def add_text_to_scene(self, features):
+        if 'plainText' in list(features.keys()) and 'boundingBox' in list(features.keys()):
+            plain_text = features['plainText']
+            bbox_x = features['boundingBox']['x']
+            bbox_y = features['boundingBox']['y']
+            bbox_width = features['boundingBox']['width']
+            bbox_height = features['boundingBox']['height']
+
+            # default features
+            font_color = 'black'
+            font_family = 'monospace'
+            font_size = '12.0'
+            font_style = 'normal'
+            font_weight = 'normal'
+            h_text_anchor = 'center'
+            v_text_anchor = 'center'
+
+            if 'graphicalText' in list(features.keys()):
+                if 'strokeColor' in list(features['graphicalText'].keys()):
+                    font_color = self.graph_info.find_color_value(features['graphicalText']['strokeColor'], False)
+                if 'fontFamily' in list(features['graphicalText'].keys()):
+                    font_family = features['graphicalText']['fontFamily']
+                if 'fontSize' in list(features['graphicalText'].keys()):
+                    font_size = features['graphicalText']['fontSize']['abs'] + \
+                                0.01 * features['graphicalText']['fontSize']['rel'] * bbox_width
+                if 'fontStyle' in list(features['graphicalText'].keys()):
+                    font_style = features['graphicalText']['fontStyle']
+                if 'fontWeight' in list(features['graphicalText'].keys()):
+                    font_weight = features['graphicalText']['fontWeight']
+                if 'hTextAnchor' in list(features['graphicalText'].keys()):
+                    if features['graphicalText']['hTextAnchor'] == 'start':
+                        h_text_anchor = 'left'
+                    elif features['graphicalText']['hTextAnchor'] == 'middle':
+                        h_text_anchor = 'center'
+                    elif features['graphicalText']['hTextAnchor'] == 'end':
+                        h_text_anchor = 'right'
+                if 'vTextAnchor' in list(features['graphicalText'].keys()):
+                    if features['graphicalText']['vTextAnchor'] == 'middle':
+                        v_text_anchor = 'center'
+                    else:
+                        v_text_anchor = features['graphicalText']['vTextAnchor']
+
+                # get geometric shape features
+                if 'geometricShapes' in list(features['graphicalText'].keys()):
+                    for gs_index in range(len(features['graphicalText']['geometricShapes'])):
+                        position_x = bbox_x
+                        position_y = bbox_y
+
+                        if 'x' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            position_x += features['graphicalText']['geometricShapes'][gs_index]['x']['abs'] + \
+                                          0.01 * features['graphicalText']['geometricShapes'][gs_index]['x']['rel'] \
+                                          * bbox_width
+                        if 'y' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            position_y += features['graphicalText']['geometricShapes'][gs_index]['y']['abs'] + \
+                                          0.01 * features['graphicalText']['geometricShapes'][gs_index]['y']['rel'] \
+                                          * bbox_height
+                        if 'strokeColor' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            font_color = self.graph_info.find_color_value(features['graphicalText']
+                                                                          ['geometricShapes'][gs_index]['strokeColor'],
+                                                                          False)
+                        if 'fontFamily' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            font_family = features['graphicalText']['geometricShapes'][gs_index]['fontFamily']
+                        if 'fontSize' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            font_size = features['graphicalText']['geometricShapes'][gs_index]['fontSize']['abs'] + \
+                                        0.01 * features['graphicalText']['geometricShapes'][gs_index]['fontSize']['rel'] \
+                                        * bbox_width
+                        if 'fontStyle' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            font_style = features['graphicalText']['geometricShapes'][gs_index]['fontStyle']
+                        if 'fontWeight' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            font_weight = features['graphicalText']['geometricShapes'][gs_index]['fontWeight']
+                        if 'hTextAnchor' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            if features['graphicalText']['geometricShapes'][gs_index]['hTextAnchor'] == 'start':
+                                h_text_anchor = 'left'
+                            elif features['graphicalText']['geometricShapes'][gs_index]['hTextAnchor'] == 'middle':
+                                h_text_anchor = 'center'
+                            elif features['graphicalText']['geometricShapes'][gs_index]['hTextAnchor'] == 'end':
+                                h_text_anchor = 'right'
+                        if 'vTextAnchor' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
+                            if features['graphicalText']['geometricShapes'][gs_index]['vTextAnchor'] == 'middle':
+                                v_text_anchor = 'center'
                             else:
-                                polygon = Polygon(vertices, closed=True,
-                                                  edgecolor=find_color_value(stroke_color, False),
-                                                  facecolor=find_color_value(fill_color),
-                                                  fill=True, linewidth=stroke_width, linestyle=stroke_dash_array,
-                                                  zorder=z_order, antialiased=True)
-                            ax.add_patch(polygon)
+                                v_text_anchor = features['graphicalText']['geometricShapes'][gs_index]['vTextAnchor']
 
+                        # draw text
+                        self.ax.text(position_x + 0.5 * bbox_width, position_y + 0.5 * bbox_height, plain_text,
+                                     color=font_color, fontfamily=font_family, fontsize=font_size,
+                                     fontstyle=font_style, fontweight=font_weight,
+                                     va=v_text_anchor, ha=h_text_anchor, zorder=5)
+
+                # draw the text itself
+                else:
+                    self.sbml_axes.text(bbox_x + 0.5 * bbox_width, bbox_y + 0.5 * bbox_height, plain_text,
+                                        color=font_color, fontfamily=font_family, fontsize=font_size,
+                                        fontstyle=font_style, fontweight=font_weight,
+                                        va=v_text_anchor, ha=h_text_anchor, zorder=5)
+
+    def add_line_endings_to_scene(self, features):
+        if 'graphicalCurve' in list(features.keys()) and 'heads' in list(features['graphicalCurve'].keys()):
+            # draw start head
+            if 'start' in list(features['graphicalCurve']['heads'].keys()):
+                line_ending = self.graph_info.find_line_ending(features['graphicalCurve']['heads']['start'])
+                if line_ending and 'features' in list(line_ending.keys()):
+                    if 'enableRotation' in list(line_ending['features'].keys()) \
+                            and not line_ending['features']['enableRotation']:
+                        self.add_graphical_shape_to_scene(line_ending['features'],
+                                                          offset_x=features['startPoint']['x'],
+                                                          offset_y=features['startPoint']['y'], z_order=2)
+                    else:
+                        self.add_graphical_shape_to_scene(line_ending['features'],
+                                                          offset_x=features['startPoint']['x'],
+                                                          offset_y=features['startPoint']['y'],
+                                                          slope=features['startSlope'], z_order=2)
+
+            # draw end head
+            if 'end' in list(features['graphicalCurve']['heads'].keys()):
+                line_ending = self.graph_info.find_line_ending(features['graphicalCurve']['heads']['end'])
+                if line_ending and 'features' in list(line_ending.keys()):
+                    if 'enableRotation' in list(line_ending['features'].keys()) \
+                            and not line_ending['features']['enableRotation']:
+                        self.add_graphical_shape_to_scene(ax, line_ending['features'],
+                                                          offset_x=features['endPoint']['x'],
+                                                          offset_y=features['endPoint']['y'], z_order=2)
+                    else:
+                        self.add_graphical_shape_to_scene(line_ending['features'],
+                                                          offset_x=features['endPoint']['x'],
+                                                          offset_y=features['endPoint']['y'],
+                                                          slope=features['endSlope'], z_order=2)
+
+    def set_export_figure_format(self, export_figure_format):
+        self.export_figure_format = export_figure_format
+
+    def export(self, file_name):
+        if self.export_figure_format in [".pdf", ".svg", ".png"] and len(self.sbml_axes.patches):
+            self.sbml_axes.set_aspect('equal')
+            self.sbml_figure.set_size_inches(max(1.0, (self.graph_info.extents['maxX'] -
+                                                       self.graph_info.extents['minX']) / 72.0),
+                                             max(1.0, (self.graph_info.extents['maxY'] -
+                                                       self.graph_info.extents['minY']) / 72.0))
+            plt.axis('equal')
+            plt.axis('off')
+            plt.tight_layout()
+            self.sbml_figure.savefig(file_name.split('.')[0] + self.export_figure_format, transparent=True,
+                                     dpi=300)
+            plt.close('all')
+
+
+class SBMLGraphInfoExportToJsonBase(SBMLGraphInfoExportBase):
+    def __init__(self):
+        self.nodes = []
+        self.edges = []
+        super().__init__()
+
+    def reset(self):
+        super().reset()
+        self.nodes.clear()
+        self.edges.clear()
+
+    def add_compartment(self, compartment):
+        if 'id' in list(compartment.keys()) and 'referenceId' in list(compartment.keys()):
+            self.add_node(compartment, "Compartment")
+
+    def add_species(self, species):
+        if 'id' in list(species.keys()) and 'referenceId' in list(species.keys()):
+            self.add_node(species, "Species")
+
+    def add_reaction(self, reaction):
+        if 'id' in list(reaction.keys()) and 'referenceId' in list(reaction.keys()):
+            self.add_node(reaction, "Reaction")
+
+            if 'speciesReferences' in list(reaction.keys()):
+                for sr in reaction['speciesReferences']:
+                    self.add_species_reference(reaction, sr)
+
+    def add_species_reference(self, reaction, species_reference):
+        if 'id' in list(species_reference.keys()) and 'referenceId' in list(species_reference.keys()) \
+                and 'species' in list(species_reference.keys()):
+            self.add_edge(species_reference, reaction)
+
+    def add_node(self, go):
+        pass
+
+    def add_edge(self, species_reference, reaction):
+        pass
+
+
+class SBMLGraphInfoExportToCytoscapeJs(SBMLGraphInfoExportToJsonBase):
+    def __init__(self):
+        self.styles = []
+        super().__init__()
+
+    def reset(self):
+        super().reset()
+        self.styles.clear()
+
+    def add_node(self, go, category = ""):
+        node = self.initialize_entity(go)
+        self.set_entity_metaid(node, go)
+        style = self.initialize_node_style(go)
+        selected_style = self.initialize_node_selected_style(go)
+        self.set_entity_compartment(node, go)
+        self.extract_node_features(go, node, style)
+        self.set_entity_selected(node, False)
+        self.nodes.append(node)
+        self.styles.append(style)
+        self.styles.append(selected_style)
+
+    def add_edge(self, species_reference, reaction):
+        edge = self.initialize_entity(species_reference)
+        self.set_entity_metaid(edge, species_reference)
+        style = self.initialize_edge_style(species_reference)
+        selected_style = self.initialize_edge_selected_style(species_reference)
+        self.set_edge_nodes(edge, species_reference, reaction)
+        self.extract_edge_features(species_reference, style)
+        self.set_entity_selected(edge, False)
+        self.edges.append(edge)
+        self.styles.append(style)
+        self.styles.append(selected_style)
+
+    @staticmethod
+    def initialize_entity(go):
+        return {'data': {'id': go['id'], 'referenceId': go['referenceId']}}
+
+    @staticmethod
+    def set_entity_metaid(entity, go):
+        if 'metaId' in list(go.keys()):
+            entity['data']['metaId'] = go['metaId']
+
+    def set_entity_compartment(self, entity, go):
+        if 'compartment' in list(go.keys()):
+            for c in self.graph_info.compartments:
+                if c['referenceId'] == go['compartment']:
+                    entity['data']['parent'] = c['id']
+                    break
+
+    @staticmethod
+    def set_entity_selected(entity, selected):
+        entity['selected'] = selected
+
+    @staticmethod
+    def initialize_node_style(go):
+        return {'selector': "node[id = '" + go['id'] + "']", 'css': {'content': 'data(name)'}}
+
+    @staticmethod
+    def initialize_edge_style(species_reference):
+        return {'selector': "edge[id = '" + species_reference['id'] + "']",
+                'css': {'content': "", 'curve-style': 'bezier'}}
+
+    @staticmethod
+    def initialize_node_selected_style(go):
+        return {'selector': "node[id = '" + go['id'] + "']:selected",
+                'css': {'background-color': '#4169e1'}}
+
+    @staticmethod
+    def initialize_edge_selected_style(go):
+        return {'selector': "edge[id = '" + go['id'] + "']:selected",
+                'css': {'line-color': '#4169e1',
+                        'source-arrow-color': '#4169e1',
+                        'target-arrow-color': '#4169e1'}}
+
+    def set_edge_nodes(self, edge, species_reference, reaction):
+        species = None
+        for s in self.graph_info.species:
+            if s['referenceId'] == species_reference['species']:
+                species = s
+                break
+        if species and 'role' in list(species_reference.keys()):
+            if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "side product":
+                edge['data']['source'] = reaction['id']
+                edge['data']['target'] = species['id']
             else:
-                # add a simple rectangle to plot
-                rectangle = Rectangle((bbox_x, bbox_y), bbox_width, bbox_height, slope * (180.0 / math.pi),
-                                      edgecolor=find_color_value(stroke_color, False),
-                                      facecolor=find_color_value(fill_color), fill=True,
-                                      linewidth=stroke_width, linestyle=stroke_dash_array,
-                                      zorder=z_order, antialiased=True)
-                ax.add_patch(rectangle)
+                edge['data']['source'] = species['id']
+                edge['data']['target'] = reaction['id']
 
+    def extract_node_features(self, go, node, style):
+        if 'features' in list(go.keys()):
+            if 'boundingBox' in list(go['features'].keys()):
+                node['position'] = self.get_node_position(go)
+                style['css'].update(self.get_node_dimensions(go))
+            if 'graphicalShape' in list(go['features'].keys()):
+                style['css'].update(self.set_shape_style(go))
+        if 'texts' in list(go.keys()) and len(go['texts']):
+            text = go['texts'][0]
+            if 'features' in list(text.keys()):
+                if 'plainText' in list(text['features'].keys()):
+                    node['data']['name'] = text['features']['plainText']
+                if 'graphicalText' in list(text['features'].keys()):
+                    style['css'].update(self.set_node_text_style(text))
 
-def draw_curve(ax, features, z_order=1):
-    if 'curve' in list(features.keys()):
-        # default features
-        stroke_color = 'black'
-        stroke_width = '1.0'
-        stroke_dash_array = 'solid'
+    def extract_edge_features(self, go, style):
+        if 'features' in list(go.keys()):
+            if 'graphicalCurve' in list(go['features'].keys()):
+                style['css'].update(self.set_curve_style(go))
 
-        if 'graphicalCurve' in list(features.keys()):
-            if 'strokeColor' in list(features['graphicalCurve'].keys()):
-                stroke_color = features['graphicalCurve']['strokeColor']
-            if 'strokeWidth' in list(features['graphicalCurve'].keys()):
-                stroke_width = features['graphicalCurve']['strokeWidth']
-            if 'strokeDashArray' in list(features['graphicalCurve'].keys()) \
-                    and not features['graphicalCurve']['strokeDashArray'] == 'solid':
-                stroke_dash_array = (0, features['graphicalCurve']['strokeDashArray'])
+    @staticmethod
+    def get_node_position(go):
+        return {'x': go['features']['boundingBox']['x']
+                     + 0.5 * go['features']['boundingBox']['width'],
+                'y': go['features']['boundingBox']['y']
+                     + 0.5 * go['features']['boundingBox']['height']}
 
-        for v_index in range(len(features['curve'])):
-            vertices = [(features['curve'][v_index]['startX'], features['curve'][v_index]['startY'])]
-            codes = [Path.MOVETO]
-            if 'basePoint1X' in list(features['curve'][v_index].keys()):
-                vertices.append((features['curve'][v_index]['basePoint1X'], features['curve'][v_index]['basePoint1Y']))
-                vertices.append((features['curve'][v_index]['basePoint2X'], features['curve'][v_index]['basePoint2Y']))
-                codes.append(Path.CURVE4)
-                codes.append(Path.CURVE4)
-                codes.append(Path.CURVE4)
+    @staticmethod
+    def get_node_dimensions(go):
+        return {'width': go['features']['boundingBox']['width'],
+                'height': go['features']['boundingBox']['height']}
+
+    def set_shape_style(self, go):
+        shape_style = {}
+        if 'strokeColor' in list(go['features']['graphicalShape'].keys()):
+            shape_style['border-color'] = \
+                self.graph_info.find_color_value(go['features']['graphicalShape']['strokeColor'])
+        if 'strokeWidth' in list(go['features']['graphicalShape'].keys()):
+            shape_style['border-width'] = go['features']['graphicalShape']['strokeWidth']
+        if 'fillColor' in list(go['features']['graphicalShape'].keys()):
+            shape_style['background-color'] = \
+                self.graph_info.find_color_value(go['features']['graphicalShape']['fillColor'])
+        if 'geometricShapes' in list(go['features']['graphicalShape'].keys()):
+            if 'strokeColor' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
+                shape_style['border-color'] = \
+                    self.graph_info.find_color_value(go['features']['graphicalShape']
+                                                     ['geometricShapes'][0]['strokeColor'])
+            if 'strokeWidth' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
+                shape_style['border-width'] = \
+                    go['features']['graphicalShape']['geometricShapes'][0]['strokeWidth']
+            if 'fillColor' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
+                shape_style['background-color'] = \
+                    self.graph_info.find_color_value(
+                        go['features']['graphicalShape']['geometricShapes'][0]['fillColor'])
+            if 'shape' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
+                if go['features']['graphicalShape']['geometricShapes'][0]['shape'].lower() == "rectangle":
+                    shape_style['shape'] = 'roundrectangle'
+                elif go['features']['graphicalShape']['geometricShapes'][0]['shape'].lower() == "ellipse":
+                    shape_style['shape'] = 'ellipse'
+        return shape_style
+
+    def set_curve_style(self, go):
+        curve_style = {}
+        if 'strokeColor' in list(go['features']['graphicalCurve'].keys()):
+            curve_style['line-color'] = \
+                self.graph_info.find_color_value(go['features']['graphicalCurve']['strokeColor'])
+            curve_style['source-arrow-color'] = \
+                self.graph_info.find_color_value(go['features']['graphicalCurve']['strokeColor'])
+            curve_style['target-arrow-color'] = \
+                self.graph_info.find_color_value(go['features']['graphicalCurve']['strokeColor'])
+        if 'strokeWidth' in list(go['features']['graphicalCurve'].keys()):
+            curve_style['width'] = go['features']['graphicalCurve']['strokeWidth']
+        if 'role' in list(go.keys()):
+            curve_style['target-arrow-shape'] = self.set_edge_target_arrow_shape(go)
+        return curve_style
+
+    def set_node_text_style(self, text):
+        text_style = {}
+        if 'strokeColor' in list(text['features']['graphicalText'].keys()):
+            text_style['color'] = \
+                self.graph_info.find_color_value(text['features']['graphicalText']['strokeColor'])
+        if 'fontFamily' in list(text['features']['graphicalText'].keys()):
+            text_style['font-family'] = text['features']['graphicalText']['fontFamily']
+        if 'fontWeight' in list(text['features']['graphicalText'].keys()):
+            text_style['font-weight'] = text['features']['graphicalText']['fontWeight']
+        if 'fontStyle' in list(text['features']['graphicalText'].keys()):
+            text_style['font-style'] = text['features']['graphicalText']['fontStyle']
+        if 'fontSize' in list(text['features']['graphicalText'].keys()) and \
+                'boundingBox' in list(text['features'].keys()):
+            text_style['font-size'] = text['features']['graphicalText']['fontSize']['abs'] +\
+                                      text['features']['boundingBox']['width'] *\
+                                      text['features']['graphicalText']['fontSize']['rel']
+        if 'vTextAnchor' in list(text['features']['graphicalText'].keys()):
+            if text['features']['graphicalText']['vTextAnchor'] == 'middle':
+                text_style['text-valign'] = 'center'
             else:
-                codes.append(Path.LINETO)
-            vertices.append((features['curve'][v_index]['endX'], features['curve'][v_index]['endY']))
+                text_style['text-valign'] = text['features']['graphicalText']['vTextAnchor']
+        if 'hTextAnchor' in list(text['features']['graphicalText'].keys()):
+            if text['features']['graphicalText']['hTextAnchor'] == 'start':
+                text_style['text-halign'] = 'left'
+            elif text['features']['graphicalText']['hTextAnchor'] == 'middle':
+                text_style['text-halign'] = 'center'
+            elif text['features']['graphicalText']['hTextAnchor'] == 'end':
+                text_style['text-halign'] = 'right'
+        return text_style
 
-            # draw a curve
-            curve = PathPatch(Path(vertices, codes), edgecolor=find_color_value(stroke_color, False),
-                              facecolor='none', linewidth=stroke_width, linestyle=stroke_dash_array,
-                              capstyle='butt', zorder=z_order, antialiased=True)
-            ax.add_patch(curve)
+    @staticmethod
+    def set_edge_target_arrow_shape(go):
+        if go['role'].lower() == "product":
+            return "triangle"
+        elif go['role'].lower() == "modifier":
+            return "diamond"
+        elif go['role'].lower() == "activator":
+            return "circle"
+        elif go['role'].lower() == "inhibitor":
+            return "tee"
+        return ""
+
+    def export(self, file_name):
+        graph_info = dict(data={'generated_by': "SBMLplot", 'name': pathlib(file_name).stem,
+                                'shared_name': pathlib(file_name).stem, 'selected': True})
+        graph_info['elements'] = {'nodes': self.nodes, 'edges': self.edges}
+        graph_info['style'] = self.styles
+        with open(file_name.split('.')[0] + ".js", 'w', encoding='utf8') as js_file:
+            js_file.write("graph_info = ")
+            json.dump(graph_info, js_file, indent=1)
+            js_file.write(";")
 
 
-def draw_text(ax, features):
-    if 'plainText' in list(features.keys()) and 'boundingBox' in list(features.keys()):
-        plain_text = features['plainText']
-        bbox_x = features['boundingBox']['x']
-        bbox_y = features['boundingBox']['y']
-        bbox_width = features['boundingBox']['width']
-        bbox_height = features['boundingBox']['height']
+class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
+    def __init__(self):
+        super().__init__()
 
-        # default features
-        font_color = 'black'
-        font_family = 'monospace'
-        font_size = '12.0'
-        font_style = 'normal'
-        font_weight = 'normal'
-        h_text_anchor = 'center'
-        v_text_anchor = 'center'
+    def reset(self):
+        super().reset()
 
-        if 'graphicalText' in list(features.keys()):
-            if 'strokeColor' in list(features['graphicalText'].keys()):
-                font_color = find_color_value(features['graphicalText']['strokeColor'], False)
-            if 'fontFamily' in list(features['graphicalText'].keys()):
-                font_family = features['graphicalText']['fontFamily']
-            if 'fontSize' in list(features['graphicalText'].keys()):
-                font_size = features['graphicalText']['fontSize']['abs'] + \
-                            0.01 * features['graphicalText']['fontSize']['rel'] * bbox_width
-            if 'fontStyle' in list(features['graphicalText'].keys()):
-                font_style = features['graphicalText']['fontStyle']
-            if 'fontWeight' in list(features['graphicalText'].keys()):
-                font_weight = features['graphicalText']['fontWeight']
-            if 'hTextAnchor' in list(features['graphicalText'].keys()):
-                if features['graphicalText']['hTextAnchor'] == 'start':
-                    h_text_anchor = 'left'
-                elif features['graphicalText']['hTextAnchor'] == 'middle':
-                    h_text_anchor = 'center'
-                elif features['graphicalText']['hTextAnchor'] == 'end':
-                    h_text_anchor = 'right'
-            if 'vTextAnchor' in list(features['graphicalText'].keys()):
-                if features['graphicalText']['vTextAnchor'] == 'middle':
-                    v_text_anchor = 'center'
-                else:
-                    v_text_anchor = features['graphicalText']['vTextAnchor']
+    def add_node(self, go, category = ""):
+        node_ = self.initialize_entity(go)
+        self.set_entity_metaid(node_, go)
+        style_ = self.initialize_node_style(go, category)
+        self.set_entity_compartment(node_, go)
+        self.extract_node_features(go, node_, style_)
+        node_['style'] = style_
+        self.nodes.append(node_)
 
-            # get geometric shape features
-            if 'geometricShapes' in list(features['graphicalText'].keys()):
-                for gs_index in range(len(features['graphicalText']['geometricShapes'])):
-                    position_x = bbox_x
-                    position_y = bbox_y
+    def add_edge(self, species_reference, reaction):
+        edge_ = self.initialize_entity(species_reference)
+        self.set_entity_metaid(edge_, species_reference)
+        style_ = self.initialize_edge_style(species_reference)
+        self.set_edge_nodes(edge_, species_reference, reaction)
+        self.extract_edge_features(species_reference, style_)
+        edge_['style'] = style_
+        self.edges.append(edge_)
 
-                    if 'x' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        position_x += features['graphicalText']['geometricShapes'][gs_index]['x']['abs'] + \
-                                      0.01 * features['graphicalText']['geometricShapes'][gs_index]['x']['rel'] \
-                                      * bbox_width
-                    if 'y' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        position_y += features['graphicalText']['geometricShapes'][gs_index]['y']['abs'] + \
-                                      0.01 * features['graphicalText']['geometricShapes'][gs_index]['y']['rel'] \
-                                      * bbox_height
-                    if 'strokeColor' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        font_color = find_color_value(
-                            features['graphicalText']['geometricShapes'][gs_index]['strokeColor'], False)
-                    if 'fontFamily' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        font_family = features['graphicalText']['geometricShapes'][gs_index]['fontFamily']
-                    if 'fontSize' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        font_size = features['graphicalText']['geometricShapes'][gs_index]['fontSize']['abs'] + \
-                                    0.01 * features['graphicalText']['geometricShapes'][gs_index]['fontSize']['rel'] \
-                                    * bbox_width
-                    if 'fontStyle' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        font_style = features['graphicalText']['geometricShapes'][gs_index]['fontStyle']
-                    if 'fontWeight' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        font_weight = features['graphicalText']['geometricShapes'][gs_index]['fontWeight']
-                    if 'hTextAnchor' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        if features['graphicalText']['geometricShapes'][gs_index]['hTextAnchor'] == 'start':
-                            h_text_anchor = 'left'
-                        elif features['graphicalText']['geometricShapes'][gs_index]['hTextAnchor'] == 'middle':
-                            h_text_anchor = 'center'
-                        elif features['graphicalText']['geometricShapes'][gs_index]['hTextAnchor'] == 'end':
-                            h_text_anchor = 'right'
-                    if 'vTextAnchor' in list(features['graphicalText']['geometricShapes'][gs_index].keys()):
-                        if features['graphicalText']['geometricShapes'][gs_index]['vTextAnchor'] == 'middle':
-                            v_text_anchor = 'center'
-                        else:
-                            v_text_anchor = features['graphicalText']['geometricShapes'][gs_index]['vTextAnchor']
+    @staticmethod
+    def initialize_entity(go):
+        return {'id': go['id']}
 
-                    # draw text
-                    ax.text(position_x + 0.5 * bbox_width, position_y + 0.5 * bbox_height, plain_text,
-                            color=font_color, fontfamily=font_family, fontsize=font_size,
-                            fontstyle=font_style, fontweight=font_weight,
-                            va=v_text_anchor, ha=h_text_anchor, zorder=5)
+    @staticmethod
+    def set_entity_metaid(item, go):
+        if 'metaId' in list(go.keys()):
+            item['metaId'] = go['metaId']
 
-            # draw the text itself
+    def set_entity_compartment(self, item, go):
+        if 'compartment' in list(go.keys()):
+
+            for c in self.graph_info.compartments:
+                if c['referenceId'] == go['compartment']:
+                    item['parent'] = c['id']
+                    break
+
+    @staticmethod
+    def initialize_node_style(go, category):
+        parent_category = ""
+        if category == "Compartment":
+            parent_category = "Compartment"
+        return {'name': go['id'] + "_style", 'category': category,
+                'parent-category': parent_category, 'shapes': []}
+
+    @staticmethod
+    def initialize_edge_style(species_reference):
+        return {'name': species_reference['id'] + "_style", 'category': "SpeciesReference",
+                'sub-category': species_reference['role'], 'shapes': []}
+
+    def set_edge_nodes(self, edge, species_reference, reaction):
+        species = {}
+        for s in self.graph_info.species:
+            if s['referenceId'] == species_reference['species']:
+                species = s
+                break
+        if 'role' in list(species_reference.keys()):
+            if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "side product":
+                edge['start'], edge['end'] = self.get_edge_nodes_features(reaction, species)
             else:
-                ax.text(bbox_x + 0.5 * bbox_width, bbox_y + 0.5 * bbox_height, plain_text,
-                        color=font_color, fontfamily=font_family, fontsize=font_size,
-                        fontstyle=font_style, fontweight=font_weight,
-                        va=v_text_anchor, ha=h_text_anchor, zorder=5)
+                edge['start'], edge['end'] = self.get_edge_nodes_features(species, reaction)
 
+    def extract_node_features(self, go, node, style):
+        if 'features' in list(go.keys()):
+            if 'boundingBox' in list(go['features'].keys()):
+                node['position'] = self.get_node_position(go)
+                node['dimensions'] = self.get_node_dimensions(go)
+            if 'graphicalShape' in list(go['features'].keys())\
+                    and 'geometricShapes' in list(go['features']['graphicalShape'].keys()):
+                style['shapes'] = self.get_shape_style(go, offset_x=-0.5 * go['features']['boundingBox']['width'],
+                                     offset_y=-0.5 * go['features']['boundingBox']['height'])
+            if 'texts' in list(go.keys()):
+                for text in go['texts']:
+                    if 'features' in list(text.keys()):
+                        style['shapes'].append(self.get_node_text(text, go['features']['boundingBox']))
 
-def draw_line_endings(ax, features):
-    if 'graphicalCurve' in list(features.keys()) and 'heads' in list(features['graphicalCurve'].keys()):
-        # draw start head
-        if 'start' in list(features['graphicalCurve']['heads'].keys()):
-            line_ending = find_line_ending(features['graphicalCurve']['heads']['start'])
-            if 'features' in list(line_ending.keys()):
-                if 'enableRotation' in list(line_ending['features'].keys()) \
-                        and not line_ending['features']['enableRotation']:
-                    draw_graphical_shape(ax, line_ending['features'],
-                                         offset_x=features['startPoint']['x'],
-                                         offset_y=features['startPoint']['y'], z_order=2)
-                else:
-                    draw_graphical_shape(ax, line_ending['features'],
-                                         offest_x=features['startPoint']['x'], offest_y=features['startPoint']['y'],
-                                         slope=features['startSlope'], z_order=2)
+    def extract_edge_features(self, go, style):
+        if 'features' in list(go.keys()) and 'graphicalCurve' in list(go['features'].keys()):
+            style['shapes'].append(self.get_curve_style(go))
+            if 'heads' in list(go['features']['graphicalCurve'].keys()) \
+                    and 'end' in list(go['features']['graphicalCurve']['heads'].keys()):
+                style['arrow-head'] =\
+                    self.get_arrow_heads(go['features']['graphicalCurve']['heads'], style['name'])
 
-        # draw end head
-        if 'end' in list(features['graphicalCurve']['heads'].keys()):
-            line_ending = find_line_ending(features['graphicalCurve']['heads']['end'])
-            if 'features' in list(line_ending.keys()):
-                if 'enableRotation' in list(line_ending['features'].keys()) \
-                        and not line_ending['features']['enableRotation']:
-                    draw_graphical_shape(ax, line_ending['features'],
-                                         offset_x=features['endPoint']['x'],
-                                         offset_y=features['endPoint']['y'], z_order=2)
-                else:
-                    draw_graphical_shape(ax, line_ending['features'],
-                                         offest_x=features['endPoint']['x'], offest_y=features['endPoint']['y'],
-                                         slope=features['endSlope'], z_order=2)
+    @staticmethod
+    def get_node_position(go):
+        return {'x': go['features']['boundingBox']['x']
+                     + 0.5 * go['features']['boundingBox']['width'],
+                'y': go['features']['boundingBox']['y']
+                     + 0.5 * go['features']['boundingBox']['height']}
 
+    @staticmethod
+    def get_node_dimensions(go):
+        return {'width': go['features']['boundingBox']['width'],
+                'height': go['features']['boundingBox']['height']}
 
-def fit_text_to_bbox(text_features):
-    if is_layout_modified \
-            and 'boundingBox' in list(text_features.keys()) \
-            and 'plainText' in list(text_features.keys()) \
-            and 'graphicalText' in list(text_features.keys()) \
-            and 'fontFamily' in list(text_features['graphicalText'].keys()) \
-            and 'fontSize' in list(text_features['graphicalText'].keys()):
-        fp = FontProperties(family=text_features['graphicalText']['fontFamily'],
-                            size=text_features['graphicalText']['fontSize']['abs']
-                            + 0.01 * text_features['graphicalText']['fontSize']['rel']
-                            * text_features['boundingBox']['width'])
-        text_width, text_height, text_descent = TextToPath().get_text_width_height_descent(s=text_features['plainText'],
-                                                                                           prop=fp, ismath=False)
-        char_width = text_width / len(text_features['plainText'])
-        if text_width > text_features['boundingBox']['width'] - char_width:
-            while text_width > text_features['boundingBox']['width'] - char_width:
-                text_features['plainText'] = text_features['plainText'][:-1]
-                text_width -= char_width
-            text_features['plainText'] += "."
+    def get_edge_nodes_features(self, start_go, end_go):
+        start_node_features = {'node': start_go['id']}
+        end_node_features = {'node': end_go['id']}
+        start_node_position = self.get_node_position(start_go)
+        start_node_dimensions = self.get_node_dimensions(start_go)
+        end_node_position = self.get_node_position(end_go)
+        end_node_dimensions = self.get_node_dimensions(end_go)
+        start_node_radius = 0.5 * max(start_node_dimensions['width'], start_node_dimensions['height'])
+        end_node_radius = 0.5 * max(end_node_dimensions['width'], end_node_dimensions['height'])
+        slope = math.atan2(end_node_position['y'] - start_node_position['y'],
+                           end_node_position['x'] - start_node_position['x']);
+        start_node_features['position'] = {'x': start_node_position['x'] + start_node_radius * math.cos(slope),
+                                           'y': start_node_position['y'] + start_node_radius * math.sin(slope)}
+        end_node_features['position'] = {'x': end_node_position['x'] - end_node_radius * math.cos(slope),
+                                         'y': end_node_position['y'] + end_node_radius * math.sin(slope)}
 
+        return start_node_features, end_node_features
 
-def get_node_features(go, node, style):
-    if 'text' in list(go.keys()) and 'features' in list(go['text'].keys()):
-        if 'plainText' in list(go['text']['features'].keys()):
-            node['data']['name'] = go['text']['features']['plainText']
-        if 'graphicalText' in list(go['text']['features'].keys()):
-            if 'strokeColor' in list(go['text']['features']['graphicalText'].keys()):
-                style['css']['color'] = \
-                    find_color_value(go['text']['features']['graphicalText']['strokeColor'])
-            if 'fontFamily' in list(go['text']['features']['graphicalText'].keys()):
-                style['css']['font-family'] = go['text']['features']['graphicalText']['fontFamily']
-            if 'fontWeight' in list(go['text']['features']['graphicalText'].keys()):
-                style['css']['font-weight'] = go['text']['features']['graphicalText']['fontWeight']
-            if 'fontStyle' in list(go['text']['features']['graphicalText'].keys()):
-                style['css']['font-style'] = go['text']['features']['graphicalText']['fontStyle']
-            if 'fontSize' in list(go['text']['features']['graphicalText'].keys()) and \
-                    'boundingBox' in list(go['text']['features'].keys()):
-                style['css']['font-size'] = go['text']['features']['graphicalText']['fontSize']['abs'] + \
-                                             go['text']['features']['boundingBox']['width'] \
-                                             * go['text']['features']['graphicalText']['fontSize']['rel']
-            if 'vTextAnchor' in list(go['text']['features']['graphicalText'].keys()):
-                if go['text']['features']['graphicalText']['vTextAnchor'] == 'middle':
-                    style['css']['text-valign'] = 'center'
-                else:
-                    style['css']['text-valign'] = go['text']['features']['graphicalText']['vTextAnchor']
-            if 'hTextAnchor' in list(go['text']['features']['graphicalText'].keys()):
-                if go['text']['features']['graphicalText']['hTextAnchor'] == 'start':
-                    style['css']['text-halign'] = 'left'
-                elif go['text']['features']['graphicalText']['hTextAnchor'] == 'middle':
-                    style['css']['text-halign'] = 'center'
-                elif go['text']['features']['graphicalText']['hTextAnchor'] == 'end':
-                    style['css']['text-halign'] = 'right'
-    if 'features' in list(go.keys()):
-        if 'boundingBox' in list(go['features'].keys()):
-            node['position'] = {'x': go['features']['boundingBox']['x']
-                                + 0.5 * go['features']['boundingBox']['width'],
-                                'y': go['features']['boundingBox']['y']
-                                + 0.5 * go['features']['boundingBox']['height']}
-            style['css']['width'] = go['features']['boundingBox']['width']
-            style['css']['height'] = go['features']['boundingBox']['height']
-        if 'graphicalShape' in list(go['features'].keys()):
+    def get_shape_style(self, go, offset_x=0.0, offset_y=0.0):
+        geometric_shapes = []
+        for gs in go['features']['graphicalShape']['geometricShapes']:
+            geometric_shape = {}
             if 'strokeColor' in list(go['features']['graphicalShape'].keys()):
-                style['css']['border-color'] = \
-                    find_color_value(go['features']['graphicalShape']['strokeColor'])
+                default_stroke = \
+                    self.graph_info.find_color_value(go['features']['graphicalShape']['strokeColor'])
+                if default_stroke:
+                    geometric_shape['stroke'] = default_stroke
             if 'strokeWidth' in list(go['features']['graphicalShape'].keys()):
-                style['css']['border-width'] = go['features']['graphicalShape']['strokeWidth']
+                geometric_shape['stroke-width'] = go['features']['graphicalShape']['strokeWidth']
             if 'fillColor' in list(go['features']['graphicalShape'].keys()):
-                style['css']['background-color'] = \
-                    find_color_value(go['features']['graphicalShape']['fillColor'])
-            if 'geometricShapes' in list(go['features']['graphicalShape'].keys()):
-                if 'strokeColor' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
-                    style['css']['border-color'] = \
-                        find_color_value(go['features']['graphicalShape']
-                                         ['geometricShapes'][0]['strokeColor'])
-                if 'strokeWidth' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
-                    style['css']['border-width'] = \
-                        go['features']['graphicalShape']['geometricShapes'][0]['strokeWidth']
-                if 'fillColor' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
-                    style['css']['background-color'] = \
-                        find_color_value(go['features']['graphicalShape']['geometricShapes'][0]['fillColor'])
-                if 'shape' in list(go['features']['graphicalShape']['geometricShapes'][0].keys()):
-                    if go['features']['graphicalShape']['geometricShapes'][0]['shape'] == "rectangle":
-                        style['css']['shape'] = 'roundrectangle'
-                    elif go['features']['graphicalShape']['geometricShapes'][0]['shape'] == "ellipse":
-                        style['css']['shape'] = 'ellipse'
+                default_fill = \
+                    self.graph_info.find_color_value(go['features']['graphicalShape']['fillColor'])
+                if default_fill:
+                    geometric_shape['fill'] = default_fill
+            geometric_shape.update(
+                self.get_geometric_shape_features(gs, self.get_node_dimensions(go), offset_x, offset_y))
+            if 'shape' in list(geometric_shape.keys()):
+                geometric_shapes.append(geometric_shape)
+        return geometric_shapes
+
+    def get_curve_style(self, go):
+        geometric_shape = {}
+        if 'strokeColor' in list(go['features']['graphicalCurve'].keys()):
+            default_stroke = \
+                self.graph_info.find_color_value(go['features']['graphicalCurve']['strokeColor'])
+            if default_stroke:
+                geometric_shape['stroke'] = default_stroke
+        if 'strokeWidth' in list(go['features']['graphicalCurve'].keys()):
+            geometric_shape['stroke-width'] = go['features']['graphicalCurve']['strokeWidth']
+        geometric_shape.update(self.get_curve_style_features(go['features']['graphicalCurve']))
+        if len(go['features']['curve']):
+            geometric_shape.update(self.get_curve_features(go['features']['curve']))
+        return geometric_shape
+
+    def get_geometric_shape_features(self, gs, dimensions, offset_x, offset_y):
+        geometric_shape = {}
+        if 'strokeColor' in list(gs.keys()):
+            geometric_shape['stroke'] = self.graph_info.find_color_value(gs['strokeColor'])
+        if 'strokeWidth' in list(gs.keys()):
+            geometric_shape['stroke-width'] = gs['strokeWidth']
+        if 'fillColor' in list(gs.keys()):
+            geometric_shape['fill'] = self.graph_info.find_color_value(gs['fillColor'])
+        if 'shape' in list(gs.keys()):
+            if gs['shape'].lower() == "rectangle":
+                geometric_shape.update(
+                    self.get_rectangle_features(gs, dimensions, offset_x, offset_y))
+            elif gs['shape'].lower() == "ellipse":
+                geometric_shape.update(
+                    self.get_ellipse_features(gs, dimensions, offset_x, offset_y))
+            elif gs['shape'].lower() == "polygon":
+                geometric_shape.update(
+                    self.get_polygon_features(gs, dimensions, offset_x, offset_y))
+        return geometric_shape
+
+    def get_curve_style_features(self, gc):
+        geometric_shape = {}
+        if 'strokeColor' in list(gc.keys()):
+            geometric_shape['stroke'] = self.graph_info.find_color_value(gc['strokeColor'])
+        if 'strokeWidth' in list(gc.keys()):
+            geometric_shape['stroke-width'] = gc['strokeWidth']
+        if 'fillColor' in list(gc.keys()):
+            geometric_shape['fill'] = self.graph_info.find_color_value(gc['fillColor'])
+        return geometric_shape
+
+    @staticmethod
+    def get_curve_features(curve):
+        curve_shape = {}
+        element = curve[0]
+        if all(k in element.keys() for k in ('startX', 'startY', 'endX', 'endY',
+                                             'basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
+            curve_shape['shape'] = "bezier"
+            curve_shape['p1'] = {'x': 0, 'y': 0}
+            if abs(element['endX'] - element['startX']) > 0:
+                curve_shape['p1']['x'] = \
+                    round((element['basePoint1X'] - element['startX']) / (
+                            0.01 * (element['endX'] - element['startX'])))
+            if abs(element['endY'] - element['startY']) > 0:
+                curve_shape['p1']['y'] = \
+                    round((element['basePoint1Y'] - element['startY']) / (
+                            0.01 * (element['endY'] - element['startY'])))
+            curve_shape['p2'] = {'x': 0, 'y': 0}
+            if abs(element['endX'] - element['startX']) > 0:
+                curve_shape['p2']['x'] = \
+                    round(
+                        (element['basePoint2X'] - element['endX']) / (0.01 * (element['endX'] - element['startX'])))
+            if abs(element['endY'] - element['startY']) > 0:
+                curve_shape['p2']['y'] = \
+                    round(
+                        (element['basePoint2Y'] - element['endY']) / (0.01 * (element['endY'] - element['startY'])))
+        else:
+            curve_shape['shape'] = "line"
+        return curve_shape
+
+    @staticmethod
+    def get_ellipse_features(gs, dimensions, offset_x, offset_y):
+        ellipse_shape = {'shape': "ellipse"}
+        if 'cx' in list(gs.keys()):
+            ellipse_shape['cx'] = gs['cx']['abs'] + 0.01 * gs['cx'][
+                'rel'] * dimensions['width'] + offset_x
+        if 'cy' in list(gs.keys()):
+            ellipse_shape['cy'] = gs['cy']['abs'] + 0.01 * gs['cy'][
+                'rel'] * dimensions['height'] + offset_y
+        if 'rx' in list(gs.keys()):
+            ellipse_shape['rx'] = gs['rx']['abs'] + 0.01 * gs['rx'][
+                'rel'] * dimensions['width']
+        if 'ry' in list(gs.keys()):
+            ellipse_shape['ry'] = gs['ry']['abs'] + \
+                                  0.01 * gs['ry']['rel'] * dimensions['height']
+        if 'ratio' in list(gs.keys()) and gs['ratio'] > 0.0:
+            if (dimensions['width'] / dimensions['height']) <= gs['ratio']:
+                ellipse_shape['rx'] = 0.5 * dimensions['width']
+                ellipse_shape['ry'] = (0.5 * dimensions['width'] / gs['ratio'])
+            else:
+                ellipse_shape['ry'] = 0.5 * dimensions['height']
+                ellipse_shape['rx'] = gs['ratio'] * 0.5 * dimensions['height']
+        return ellipse_shape
+
+    @staticmethod
+    def get_rectangle_features(gs, dimensions, offset_x, offset_y):
+        rectangle_shape = {'shape': "rect"}
+        if 'x' in list(gs.keys()):
+            rectangle_shape['x'] = gs['x']['abs'] + \
+                                   0.01 * gs['x']['rel'] * dimensions['width'] + offset_x
+        if 'y' in list(gs.keys()):
+            rectangle_shape['y'] = gs['y']['abs'] + \
+                                   0.01 * gs['y']['rel'] * dimensions['height'] + offset_y
+        if 'width' in list(gs.keys()):
+            rectangle_shape['width'] = gs['width']['abs'] + \
+                                       0.01 * gs['width']['rel'] * dimensions['width']
+        if 'height' in list(gs.keys()):
+            rectangle_shape['height'] = gs['height']['abs'] + \
+                                        0.01 * gs['height']['rel'] * dimensions['height']
+        if 'ratio' in list(gs.keys()) and gs['ratio'] > 0.0:
+            if (dimensions['width'] / dimensions['height']) <= gs['ratio']:
+                rectangle_shape['width'] = dimensions['width']
+                rectangle_shape['height'] = dimensions['height'] / gs['ratio']
+                rectangle_shape['y'] += 0.5 * (dimensions['height'] - rectangle_shape['height'])
+            else:
+                rectangle_shape['height'] = dimensions['height']
+                rectangle_shape['width'] = gs['ratio'] * dimensions['height']
+                rectangle_shape['x'] += 0.5 * (dimensions['width'] - rectangle_shape['width'])
+        if 'rx' in list(gs.keys()):
+            rectangle_shape['rx'] = gs['rx']['abs'] + \
+                                    0.01 * gs['rx']['rel'] * 0.5 * dimensions['width']
+        if 'ry' in list(gs.keys()):
+            rectangle_shape['ry'] = gs['ry']['abs'] + \
+                                    0.01 * gs['ry']['rel'] * 0.5 * dimensions['height']
+            return rectangle_shape
+
+    @staticmethod
+    def get_polygon_features(gs, dimensions, offset_x, offset_y):
+        polygon_shape = {'shape': "polygon"}
+        if 'vertices' in list(gs.keys()):
+            points = []
+            for v_index in range(len(gs['vertices'])):
+                points.append({'x': gs['vertices'][v_index]['renderPointX']['abs'] + 0.01 *
+                                    gs['vertices'][v_index]['renderPointX']['rel'] * dimensions['width'] + offset_x,
+                               'y': gs['vertices'][v_index]['renderPointY']['abs'] + 0.01 *
+                                    gs['vertices'][v_index]['renderPointY']['rel'] * dimensions['height'] + offset_y})
+        polygon_shape['points'] = points
+        return polygon_shape
+
+    def get_node_text(self, text, go_bounding_box):
+        text_shape = {'shape': "text"}
+        if 'plainText' in list(text['features'].keys()):
+            text_shape['plain-text'] = text['features']['plainText']
+        if 'graphicalText' in list(text['features'].keys()):
+            text_shape.update(self.get_text_features(text, go_bounding_box))
+        return text_shape
+
+    def get_text_features(self, text, go_bounding_box):
+        features = {}
+        if 'strokeColor' in list(text['features']['graphicalText'].keys()):
+            features['color'] = \
+                self.graph_info.find_color_value(text['features']['graphicalText']['strokeColor'])
+        if 'fontFamily' in list(text['features']['graphicalText'].keys()):
+            features['font-family'] = text['features']['graphicalText']['fontFamily']
+        if 'fontWeight' in list(text['features']['graphicalText'].keys()):
+            features['font-weight'] = text['features']['graphicalText']['fontWeight']
+        if 'fontStyle' in list(text['features']['graphicalText'].keys()):
+            features['font-style'] = text['features']['graphicalText']['fontStyle']
+        if 'hTextAnchor' in list(text['features']['graphicalText'].keys()):
+            features['text-anchor'] = text['features']['graphicalText']['hTextAnchor']
+        if 'vTextAnchor' in list(text['features']['graphicalText'].keys()):
+            features['vtext-anchor'] = text['features']['graphicalText']['vTextAnchor']
+        if 'boundingBox' in list(text['features'].keys()):
+            features['x'] = text['features']['boundingBox']['x'] -\
+                            (go_bounding_box['x'] + 0.5 * go_bounding_box['width'])
+            features['y'] = text['features']['boundingBox']['y'] -\
+                            (go_bounding_box['y'] + 0.5 * go_bounding_box['height'])
+            features['width'] = text['features']['boundingBox']['width']
+            features['height'] = text['features']['boundingBox']['height']
+            if 'fontSize' in list(text['features']['graphicalText'].keys()):
+                features['font-size'] = text['features']['graphicalText']['fontSize']['abs'] +\
+                                        text['features']['boundingBox']['width'] * \
+                                        text['features']['graphicalText']['fontSize']['rel']
+        return features
+
+    def get_arrow_heads(self, heads, style_name):
+        line_ending_style = {'name': style_name + "_ArrowHead", 'category': "LineEnding", 'shapes': []}
+        line_ending = self.graph_info.find_line_ending(heads['end'])
+        if line_ending and 'graphicalShape' in list(line_ending['features'].keys())\
+            and 'geometricShapes' in list(line_ending['features']['graphicalShape'].keys()):
+            line_ending_style['shapes'] =\
+                self.get_shape_style(line_ending,
+                                     offset_x=line_ending['features']['boundingBox']['x'],
+                                     offset_y=line_ending['features']['boundingBox']['y'])
+        return line_ending_style
+
+    def export(self, file_name="file"):
+        position = {'x': self.graph_info.extents['minX'] + 0.5 * (self.graph_info.extents['maxX'] - self.graph_info.extents['minX']),
+                    'y': self.graph_info.extents['minY'] + 0.5 * (self.graph_info.extents['maxY'] - self.graph_info.extents['minY'])}
+        dimensions = {'width': self.graph_info.extents['maxX'] - self.graph_info.extents['minX'],
+                      'height': self.graph_info.extents['maxY'] - self.graph_info.extents['minY']}
+        graph_info = {'generated_by': "SBMLplot",
+                      'name': pathlib(file_name).stem + "_graph",
+                      'position': position,
+                      'dimensions': dimensions,
+                      'nodes': self.nodes,
+                      'edges': self.edges}
+        with open(file_name.split('.')[0] + ".json", 'w', encoding='utf8') as js_file:
+            json.dump(graph_info, js_file, indent=1)
+        return graph_info
 
 
-def get_edge_features(go, edge, style):
-    if 'features' in list(go.keys()):
-        if 'graphicalCurve' in list(go['features'].keys()):
-            if 'strokeColor' in list(go['features']['graphicalCurve'].keys()):
-                style['css']['line-color'] = \
-                    find_color_value(go['features']['graphicalCurve']['strokeColor'])
-                style['css']['source-arrow-color'] = \
-                    find_color_value(go['features']['graphicalCurve']['strokeColor'])
-                style['css']['target-arrow-color'] = \
-                    find_color_value(go['features']['graphicalCurve']['strokeColor'])
-            if 'strokeWidth' in list(go['features']['graphicalCurve'].keys()):
-                style['css']['width'] = go['features']['graphicalCurve']['strokeWidth']
-            if 'role' in list(go.keys()):
-                if go['role'] == "product":
-                    style['css']['target-arrow-shape'] = "triangle"
-                if go['role'] == "modifier":
-                    style['css']['target-arrow-shape'] = "diamond"
-                if go['role'] == "activator":
-                    style['css']['target-arrow-shape'] = "circle"
-                if go['role'] == "inhibitor":
-                    style['css']['target-arrow-shape'] = "tee"
+"""
+sbml_graph_info = SBMLGraphInfoImportFromNetworkEditor()
+f = open("/Users/home/Downloads/network7.json")
+sbml_graph_info.extract_info(json.load(f))
+sbml_export = SBMLGraphInfoExportToSBMLModel()
+sbml_export.extract_graph_info(sbml_graph_info)
+sbml_export.export("/Users/home/Downloads/Model.xml")
+"""
