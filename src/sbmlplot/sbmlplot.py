@@ -1,5 +1,6 @@
 import sys
 import libsbne as sbne
+import libsbmlnetworkeditor
 import numpy as np
 import math
 import json
@@ -141,6 +142,36 @@ class SBMLGraphInfoImportBase:
         # gradients
         for gradient in self.gradients:
             self.extract_gradient_features(gradient)
+
+class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
+    def __init__(self):
+        super().__init__()
+
+    def extract_info(self, graph):
+        super().extract_info(graph)
+
+        document = libsbmlnetworkeditor.readSBML(graph)
+        self.extract_layout_info(document)
+        self.extract_render_info(document)
+
+    def extract_layout_info(self, document):
+        if not libsbmlnetworkeditor.getNumLayouts(document):
+            libsbmlnetworkeditor.createDefaultLayout(document)
+        self.layout = libsbmlnetworkeditor.getLayout(document)
+
+    def extract_render_info(self, document):
+        self.extract_global_render_info(document)
+        self.extract_local_render_info(document)
+
+    def extract_global_render_info(self, document):
+        if not libsbmlnetworkeditor.getNumGlobalRenderInformation(document):
+            libsbmlnetworkeditor.createDefaultGlobalRenderInformation(document)
+        self.global_render = libsbmlnetworkeditor.getGlobalRenderInformation(document)
+
+    def extract_local_render_info(self, document):
+        if not libsbmlnetworkeditor.getNumLocalRenderInformation(self.layout):
+            libsbmlnetworkeditor.createDefaultLocalRenderInformation(document, self.layout)
+        self.local_render = libsbmlnetworkeditor.getLocalRenderInformation(self.layout)
 
 
 class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
@@ -3349,6 +3380,8 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
         return graph_info
 
 
+sbml_graph_info = SBMLGraphInfoImportFromSBMLModel2()
+sbml_graph_info.extract_info("/Users/home/Downloads/adel.xml")
 """
 sbml_graph_info = SBMLGraphInfoImportFromNetworkEditor()
 f = open("/Users/home/Downloads/network7.json")
