@@ -191,7 +191,8 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         self.extents['maxY'] = max(self.extents['maxY'], bounding_box['y'] + bounding_box['height'])
 
     def add_compartment(self, compartment_object):
-        pass
+        compartment = self.extract_go_object_features(compartment_object)
+        self.compartments.append(compartment)
 
     def add_species(self, species_object):
         pass
@@ -199,6 +200,8 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
     def add_reaction(self, reaction_object):
         pass
 
+    def extract_go_object_features(self, go_object):
+        pass
 
 
 class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
