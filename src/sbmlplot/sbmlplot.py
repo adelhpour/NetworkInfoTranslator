@@ -195,7 +195,19 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         self.compartments.append(compartment)
 
     def add_species(self, species_object):
-        pass
+        species = self.extract_go_object_features(species_object)
+
+        # set the compartment
+        """
+        s_compartment = libsbmlnetworkeditor.ne_spc_getCompartment(species_object)
+        if s_compartment:
+            for c in self.compartments:
+                if s_compartment == c['referenceId']:
+                    species['compartment'] = c['referenceId']
+                    break
+        """
+
+        self.species.append(species)
 
     def add_reaction(self, reaction_object):
         pass
