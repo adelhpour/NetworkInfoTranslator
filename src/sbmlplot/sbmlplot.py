@@ -158,6 +158,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         if not libsbmlnetworkeditor.getNumLayouts(document):
             libsbmlnetworkeditor.createDefaultLayout(document)
         self.layout = libsbmlnetworkeditor.getLayout(document)
+        self.extract_layout_features()
 
     def extract_render_info(self, document):
         self.extract_global_render_info(document)
@@ -170,8 +171,34 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
 
     def extract_local_render_info(self, document):
         if not libsbmlnetworkeditor.getNumLocalRenderInformation(self.layout):
-            libsbmlnetworkeditor.createDefaultLocalRenderInformation(document, self.layout)
+            libsbmlnetworkeditor.createDefaultLocalRenderInformation(document)
         self.local_render = libsbmlnetworkeditor.getLocalRenderInformation(self.layout)
+
+    def extract_layout_features(self):
+        for c_index in range(libsbmlnetworkeditor.getNumCompartmentGlyphs(self.layout)):
+            self.add_compartment(libsbmlnetworkeditor.getCompartmentGlyph(self.layout, c_index))
+
+        for s_index in range(libsbmlnetworkeditor.getNumSpeciesGlyphs(self.layout)):
+            self.add_species(libsbmlnetworkeditor.getSpeciesGlyph(self.layout, s_index))
+
+        for r_index in range(libsbmlnetworkeditor.getNumReactionGlyphs(self.layout)):
+            self.add_reaction(libsbmlnetworkeditor.getReactionGlyph(self.layout, r_index))
+
+    def extract_extents(self, bounding_box):
+        self.extents['minX'] = 0.0
+        self.extents['maxX'] = max(self.extents['maxX'], bounding_box['x'] + bounding_box['width'])
+        self.extents['minY'] = 0.0
+        self.extents['maxY'] = max(self.extents['maxY'], bounding_box['y'] + bounding_box['height'])
+
+    def add_compartment(self, compartment_object):
+        pass
+
+    def add_species(self, species_object):
+        pass
+
+    def add_reaction(self, reaction_object):
+        pass
+
 
 
 class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
@@ -3381,7 +3408,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
 
 
 sbml_graph_info = SBMLGraphInfoImportFromSBMLModel2()
-sbml_graph_info.extract_info("/Users/home/Downloads/adel.xml")
+sbml_graph_info.extract_info("/Users/home/Downloads/Simple - Brusselator31.xml")
 """
 sbml_graph_info = SBMLGraphInfoImportFromNetworkEditor()
 f = open("/Users/home/Downloads/network7.json")
