@@ -212,7 +212,15 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         self.species.append(species)
 
     def add_reaction(self, reaction_object):
-        pass
+        reaction = self.extract_go_object_features(reaction_object)
+
+        # set the compartment
+        r_compartment = libsbmlnetworkeditor.getCompartmentId(self.document, reaction_object)
+        if r_compartment:
+            for c in self.compartments:
+                if r_compartment == c['referenceId']:
+                    reaction['compartment'] = c['referenceId']
+                    break
 
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
