@@ -146,13 +146,17 @@ class SBMLGraphInfoImportBase:
 class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
     def __init__(self):
         super().__init__()
+        self.document = None
+        self.layout = None
+        self.global_render = None
+        self.local_render = None
 
     def extract_info(self, graph):
         super().extract_info(graph)
 
-        document = libsbmlnetworkeditor.readSBML(graph)
-        self.extract_layout_info(document)
-        self.extract_render_info(document)
+        self.document = libsbmlnetworkeditor.readSBML(graph)
+        self.extract_layout_info(self.document)
+        self.extract_render_info(self.document)
 
     def extract_layout_info(self, document):
         if not libsbmlnetworkeditor.getNumLayouts(document):
@@ -198,14 +202,12 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         species = self.extract_go_object_features(species_object)
 
         # set the compartment
-        """
-        s_compartment = libsbmlnetworkeditor.ne_spc_getCompartment(species_object)
+        s_compartment = libsbmlnetworkeditor.getCompartmentId(self.document, species_object)
         if s_compartment:
             for c in self.compartments:
                 if s_compartment == c['referenceId']:
                     species['compartment'] = c['referenceId']
                     break
-        """
 
         self.species.append(species)
 
@@ -213,7 +215,9 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         pass
 
     def extract_go_object_features(self, go_object):
-        pass
+        features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
+                    'id': libsbmlnetworkeditor.getId(go_object)}
+        return features
 
 
 class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
