@@ -235,7 +235,6 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
                 species_reference['role'] = libsbmlnetworkeditor.getRole(species_reference_object)
             reaction['speciesReferences'].append(species_reference)
 
-
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
                     'id': libsbmlnetworkeditor.getId(go_object)}
