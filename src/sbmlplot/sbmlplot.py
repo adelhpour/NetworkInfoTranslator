@@ -238,7 +238,26 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
                     'id': libsbmlnetworkeditor.getId(go_object)}
+
+        if libsbmlnetworkeditor.getMetaId(go_object):
+            features['metaId'] = libsbmlnetworkeditor.getMetaId(go_object)
+        # text
+        features['texts'] = []
+        for text_index in range(libsbmlnetworkeditor.getNumTextGlyphs(self.layout, go_object)):
+            text_object = libsbmlnetworkeditor.getTextGlyph(self.layout, go_object, text_index)
+            features['texts'].append(self.extract_text_object_features(text_object))
+
         return features
+
+    def extract_text_object_features(self, text_object):
+        text = {'glyphObject': text_object, 'id': libsbmlnetworkeditor.getId(text_object)}
+        if libsbmlnetworkeditor.isSetGraphicalObjectId(text_object):
+            text['graphicalObject'] = \
+                libsbmlnetworkeditor.getGraphicalObject(self.layout, libsbmlnetworkeditor.getGraphicalObjectId(text_object))
+        ## add originOfText
+        return text
+
+
 
 
 class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
