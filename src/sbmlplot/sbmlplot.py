@@ -222,6 +222,20 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
                     reaction['compartment'] = c['referenceId']
                     break
 
+        # species references
+        reaction['speciesReferences'] = []
+        for sr_index in range(libsbmlnetworkeditor.getNumSpeciesReferenceGlyphs(reaction_object)):
+            species_reference_object = libsbmlnetworkeditor.getSpeciesReferenceGlyph(reaction_object, sr_index)
+            species_reference = self.extract_go_object_features(species_reference_object)
+            species_reference['species'] = libsbmlnetworkeditor.getSBMLObjectId(self.layout,
+                libsbmlnetworkeditor.getSpeciesGlyphId(species_reference_object))
+            species_reference['speciesGlyph'] = \
+                libsbmlnetworkeditor.getSpeciesGlyphId(species_reference_object)
+            if libsbmlnetworkeditor.isSetRole(species_reference_object):
+                species_reference['role'] = libsbmlnetworkeditor.getRole(species_reference_object)
+            reaction['speciesReferences'].append(species_reference)
+
+
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
                     'id': libsbmlnetworkeditor.getId(go_object)}
