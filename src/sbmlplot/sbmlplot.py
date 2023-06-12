@@ -166,7 +166,10 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
 
     def extract_render_info(self, document):
         self.extract_global_render_info(document)
+        self.extract_global_render_features()
         self.extract_local_render_info(document)
+        # extract render package info
+
 
     def extract_global_render_info(self, document):
         if not libsbmlnetworkeditor.getNumGlobalRenderInformation(document):
@@ -187,6 +190,20 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
 
         for r_index in range(libsbmlnetworkeditor.getNumReactionGlyphs(self.layout)):
             self.add_reaction(libsbmlnetworkeditor.getReactionGlyph(self.layout, r_index))
+
+    def extract_global_render_features(self):
+        # get colors info
+        for c_index in range(libsbmlnetworkeditor.getNumColorDefinitions(self.global_render)):
+            self.add_color(libsbmlnetworkeditor.getColorDefinition(self.global_render, c_index))
+
+        # get gradients info
+        for g_index in range(libsbmlnetworkeditor.getNumGradientDefinitions(self.global_render)):
+            self.add_gradient(libsbmlnetworkeditor.getGradientDefinition(self.global_render, g_index))
+
+        # get line ending info
+        for le_index in range(libsbmlnetworkeditor.getNumLineEndings(self.global_render)):
+            self.add_line_ending(libsbmlnetworkeditor.getLineEnding(self.global_render, le_index))
+
 
     def extract_extents(self, bounding_box):
         self.extents['minX'] = 0.0
@@ -234,6 +251,24 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
             if libsbmlnetworkeditor.isSetRole(species_reference_object):
                 species_reference['role'] = libsbmlnetworkeditor.getRole(species_reference_object)
             reaction['speciesReferences'].append(species_reference)
+
+    def add_color(self, color_object):
+        color_ = {}
+        color_['colorDefinition'] = color_object
+        color_['id'] = libsbmlnetworkeditor.getId(color_object)
+        self.colors.append(color_)
+
+    def add_gradient(self, gradient_object):
+        gradeint_ = {}
+        gradeint_['gradientDefinition'] = gradient_object
+        gradeint_['id'] = libsbmlnetworkeditor.getId(gradient_object)
+        self.gradient.append(gradeint_)
+
+    def add_line_ending(self, line_ending_object):
+        line_ending_ = {}
+        line_ending_['lineEnding'] = line_ending_object
+        line_ending_['id'] = libsbmlnetworkeditor.getId(line_ending_object)
+        self.line_endings.append(line_ending_)
 
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
