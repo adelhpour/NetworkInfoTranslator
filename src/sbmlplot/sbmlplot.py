@@ -168,8 +168,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         self.extract_global_render_info(document)
         self.extract_global_render_features()
         self.extract_local_render_info(document)
-        # extract render package info
-
+        self.assign_graphical_object_styles()
 
     def extract_global_render_info(self, document):
         if not libsbmlnetworkeditor.getNumGlobalRenderInformation(document):
@@ -203,7 +202,6 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         # get line ending info
         for le_index in range(libsbmlnetworkeditor.getNumLineEndings(self.global_render)):
             self.add_line_ending(libsbmlnetworkeditor.getLineEnding(self.global_render, le_index))
-
 
     def extract_extents(self, bounding_box):
         self.extents['minX'] = 0.0
@@ -252,6 +250,8 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
                 species_reference['role'] = libsbmlnetworkeditor.getRole(species_reference_object)
             reaction['speciesReferences'].append(species_reference)
 
+        self.reactions.append(reaction)
+
     def add_color(self, color_object):
         color_ = {}
         color_['colorDefinition'] = color_object
@@ -269,6 +269,60 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         line_ending_['lineEnding'] = line_ending_object
         line_ending_['id'] = libsbmlnetworkeditor.getId(line_ending_object)
         self.line_endings.append(line_ending_)
+
+    def assign_graphical_object_styles(self):
+        # get compartments style from veneer
+        for compartment in self.compartments:
+            style = libsbmlnetworkeditor.getStyle(self.local_render, compartment['glyphObject'])
+            if not style:
+                style = libsbmlnetworkeditor.getStyle(self.global_render, compartment['glyphObject'])
+            compartment['style'] = style
+
+            # get compartment text style from veneer
+            if 'texts' in list(compartment.keys()):
+                for text in compartment['texts']:
+                    style = libsbmlnetworkeditor.getStyle(self.local_render, text['glyphObject'])
+                    if not style:
+                        style = libsbmlnetworkeditor.getStyle(self.global_render, text['glyphObject'])
+                    text['style'] = style
+
+        # get species style from veneer
+        for species in self.species:
+            style = libsbmlnetworkeditor.getStyle(self.local_render, species['glyphObject'])
+            if not style:
+                style = libsbmlnetworkeditor.getStyle(self.global_render, species['glyphObject'])
+            species['style'] = style
+
+            # get species text style from veneer
+            if 'texts' in list(species.keys()):
+                for text in species['texts']:
+                    style = libsbmlnetworkeditor.getStyle(self.local_render, text['glyphObject'])
+                    if not style:
+                        style = libsbmlnetworkeditor.getStyle(self.global_render, text['glyphObject'])
+                    text['style'] = style
+
+        # get reactions style from veneer
+        for reaction in self.reactions:
+            style = libsbmlnetworkeditor.getStyle(self.local_render, reaction['glyphObject'])
+            if not style:
+                style = libsbmlnetworkeditor.getStyle(self.global_render, reaction['glyphObject'])
+            reaction['style'] = style
+
+            # get reaction text style from veneer
+            if 'texts' in list(reaction.keys()):
+                for text in reaction['texts']:
+                    style = libsbmlnetworkeditor.getStyle(self.local_render, text['glyphObject'])
+                    if not style:
+                        style = libsbmlnetworkeditor.getStyle(self.global_render, text['glyphObject'])
+                    text['style'] = style
+
+            # get species references style from veneer
+            if 'speciesReferences' in list(reaction.keys()):
+                for species_reference in reaction['speciesReferences']:
+                    style = libsbmlnetworkeditor.getStyle(self.local_render, species_reference['glyphObject'])
+                    if not style:
+                        style = libsbmlnetworkeditor.getStyle(self.global_render, species_reference['glyphObject'])
+                    species_reference['style'] = style
 
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
