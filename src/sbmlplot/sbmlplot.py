@@ -347,8 +347,8 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
 
     def extract_compartment_features(self, compartment):
         compartment['features'] = self.extract_go_general_features(compartment)
-        #if compartment['glyphObject']:
-            #self.extract_extents(compartment['features']['boundingBox'])
+        if compartment['glyphObject']:
+            self.extract_extents(compartment['features']['boundingBox'])
 
     def extract_species_features(self, species):
         pass
