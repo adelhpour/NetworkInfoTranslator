@@ -354,7 +354,33 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         species['features'] = self.extract_go_general_features(species)
 
     def extract_reaction_features(self, reaction):
-        pass
+        reaction['features'] = self.extract_go_general_features(reaction)
+        if reaction['glyphObject']:
+            # get curve features
+            if libsbmlnetworkeditor.isSetCurve(reaction['glyphObject']):
+                crv = libsbmlnetworkeditor.getCurve(reaction['glyphObject'])
+                if libsbmlnetworkeditor.getNumCurveSegments(crv):
+                    curve_ = []
+                    for e_index in range(libsbmlnetworkeditor.getNumCurveSegments(crv)):
+                        element_ = {'startX': libsbmlnetworkeditor.getCurveSegmentStartPointX(crv, e_index),
+                                    'startY': libsbmlnetworkeditor.getCurveSegmentStartPointY(crv, e_index),
+                                    'endX': libsbmlnetworkeditor.getCurveSegmentEndPointX(crv, e_index),
+                                    'endY': libsbmlnetworkeditor.getCurveSegmentEndPointY(crv, e_index)}
+                        if libsbmlnetworkeditor.isCubicBezier(crv, e_index):
+                            element_["basePoint1X"] = libsbmlnetworkeditor.getCurveSegmentBasePoint1X(crv, e_index)
+                            element_["basePoint1Y"] = libsbmlnetworkeditor.getCurveSegmentBasePoint1Y(base_point1)
+                            element_["basePoint2X"] = libsbmlnetworkeditor.getCurveSegmentBasePoint2X(base_point2)
+                            element_["basePoint2Y"] = libsbmlnetworkeditor.getCurveSegmentBasePoint2Y(base_point2)
+                        curve_.append(element_)
+                    reaction['features']['curve'] = curve_
+
+                    ## extract extent box features might be needed here
+
+            # get curve features
+            if 'style' in list(reaction.keys()):
+                if 'curve' in list(reaction['features'].keys()):
+                    reaction['features']['graphicalCurve'] = \
+                        self.extract_curve_features(libsbmlnetworkeditor.getRenderGroup(reaction['style']))
 
     def extract_species_reference_features(self, species_reference):
         pass
@@ -485,6 +511,35 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
             return self.extract_ellipse_shape_features(gs)
         elif libsbmlnetworkeditor.isPolygon(gs):
             return self.extract_polygon_shape_features(gs)
+
+    @staticmethod
+    def extract_curve_features(group):
+        curve_info = {}
+        if group:
+            # get stroke color
+            if libsbmlnetworkeditor.isSetStrokeColor(group):
+                curve_info['strokeColor'] = libsbmlnetworkeditor.getStrokeColor(group)
+
+            # get stroke width
+            if libsbmlnetworkeditor.isSetStrokeWidth(group):
+                curve_info['strokeWidth'] = libsbmlnetworkeditor.getStrokeWidth(group)
+
+            # get stroke dash array
+            if libsbmlnetworkeditor.isSetStrokeDashArray(group):
+                dash_array = []
+                for d_index in range(libsbmlnetworkeditor.getNumStrokeDashes(group)):
+                    dash_array.append(libsbmlnetworkeditor.getStrokeDash(group, d_index))
+                curve_info['strokeDashArray'] = tuple(dash_array)
+
+            # get heads
+            heads_ = {}
+            if libsbmlnetworkeditor.isSetStartHead(group):
+                heads_['start'] = libsbmlnetworkeditor.getStartHead(group)
+            if libsbmlnetworkeditor.isSetEndHead(group):
+                heads_['end'] = libsbmlnetworkeditor.getEndHead(group)
+            if heads_:
+                curve_info['heads'] = heads_
+        return curve_info
 
     @staticmethod
     def extract_text_features(group):
@@ -735,7 +790,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
 
         # get position cy
         if libsbmlnetworkeditor.isSetGeometricShapeCenterY(ellipse_shape):
-            rel_abs_vec = libsbmlnetworkeditor.isSetGeometricShapeCenterY(ellipse_shape)
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeCenterY(ellipse_shape)
             ellipse_shape_info['cy'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
                                         'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
 
