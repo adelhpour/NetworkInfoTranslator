@@ -383,7 +383,66 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
                         self.extract_curve_features(libsbmlnetworkeditor.getRenderGroup(reaction['style']))
 
     def extract_species_reference_features(self, species_reference):
-        pass
+        species_reference['features'] = {}
+        if species_reference['glyphObject']:
+            # get curve features
+            if libsbmlnetworkeditor.isSetCurve(species_reference['glyphObject']):
+                crv = libsbmlnetworkeditor.getCurve(species_reference['glyphObject'])
+
+                if libsbmlnetworkeditor.getNumCurveSegments(crv):
+                    curve_ = []
+                    for e_index in range(libsbmlnetworkeditor.getNumCurveSegments(crv)):
+                        element_ = {'startX': libsbmlnetworkeditor.getCurveSegmentStartPointX(crv, e_index),
+                                    'startY': libsbmlnetworkeditor.getCurveSegmentStartPointY(crv, e_index),
+                                    'endX': libsbmlnetworkeditor.getCurveSegmentEndPointX(crv, e_index),
+                                    'endY': libsbmlnetworkeditor.getCurveSegmentEndPointY(crv, e_index)}
+                        if libsbmlnetworkeditor.isCubicBezier(crv, e_index):
+                            element_['basePoint1X'] = libsbmlnetworkeditor.getCurveSegmentBasePoint1X(crv, e_index)
+                            element_['basePoint1Y'] = libsbmlnetworkeditor.getCurveSegmentBasePoint1Y(crv, e_index)
+                            element_['basePoint2X'] = libsbmlnetworkeditor.getCurveSegmentBasePoint2X(crv, e_index)
+                            element_['basePoint2Y'] = libsbmlnetworkeditor.getCurveSegmentBasePoint2Y(crv, e_index)
+
+                        # set start point and slope
+                        if e_index == 0:
+                            # start point
+                            species_reference['features']['startPoint'] = {'x': element_['startX'],
+                                                                           'y': element_['startY']}
+
+                            # start slope
+                            if 'basePoint1X' in list(element_.keys()) \
+                                    and not element_['startX'] == element_['basePoint1X']:
+                                species_reference['features']['startSlope'] = \
+                                    math.atan2(element_['startY'] - element_['basePoint1Y'],
+                                               element_['startX'] - element_['basePoint1X'])
+                            else:
+                                species_reference['features']['startSlope'] = \
+                                    math.atan2(element_['startY'] - element_['endY'],
+                                               element_['startX'] - element_['endX'])
+
+                        # set end point and slope
+                        if e_index == libsbmlnetworkeditor.getNumCurveSegments(crv) - 1:
+                            species_reference['features']['endPoint'] = {'x': element_['endX'],
+                                                                         'y': element_['endY']}
+
+                            # end slope
+                            if 'basePoint2X' in list(element_.keys()) \
+                                    and not element_['endX'] == element_['basePoint2X']:
+                                species_reference['features']['endSlope'] = \
+                                    math.atan2(element_['endY'] - element_['basePoint2Y'],
+                                               element_['endX'] - element_['basePoint2X'])
+                            else:
+                                species_reference['features']['endSlope'] = \
+                                    math.atan2(element_['endY'] - element_['startY'],
+                                               element_['endX'] - element_['startX'])
+
+                        curve_.append(element_)
+
+                    species_reference['features']['curve'] = curve_
+
+            # get group features
+            if 'style' in list(species_reference.keys()):
+                species_reference['features']['graphicalCurve'] = \
+                    self.extract_curve_features(libsbmlnetworkeditor.getRenderGroup(species_reference['style']))
 
     @staticmethod
     def extract_color_features(color):
