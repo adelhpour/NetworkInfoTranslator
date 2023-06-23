@@ -351,7 +351,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
             self.extract_extents(compartment['features']['boundingBox'])
 
     def extract_species_features(self, species):
-        pass
+        species['features'] = self.extract_go_general_features(species)
 
     def extract_reaction_features(self, reaction):
         pass
