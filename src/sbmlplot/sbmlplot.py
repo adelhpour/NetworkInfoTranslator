@@ -332,9 +332,8 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
             features['metaId'] = libsbmlnetworkeditor.getMetaId(go_object)
         # text
         features['texts'] = []
-        for text_index in range(libsbmlnetworkeditor.getNumTextGlyphs(self.layout, go_object)):
-            text_object = libsbmlnetworkeditor.getTextGlyph(self.layout, go_object, text_index)
-            features['texts'].append(self.extract_text_object_features(text_object))
+        for text_index in range(libsbmlnetworkeditor.getNumAssociatedTextGlyphs(self.layout, go_object)):
+            features['texts'].append(self.extract_text_object_features(libsbmlnetworkeditor.getAssociatedTextGlyph(self.layout, go_object, text_index)))
 
         return features
 
@@ -345,6 +344,470 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
                 libsbmlnetworkeditor.getGraphicalObject(self.layout, libsbmlnetworkeditor.getGraphicalObjectId(text_object))
         ## add originOfText
         return text
+
+    def extract_compartment_features(self, compartment):
+        compartment['features'] = self.extract_go_general_features(compartment)
+        #if compartment['glyphObject']:
+            #self.extract_extents(compartment['features']['boundingBox'])
+
+    def extract_species_features(self, species):
+        pass
+
+    def extract_reaction_features(self, reaction):
+        pass
+
+    def extract_species_reference_features(self, species_reference):
+        pass
+
+    @staticmethod
+    def extract_color_features(color):
+        pass
+
+    @staticmethod
+    def extract_gradient_features(gradient):
+        pass
+
+    def extract_line_ending_features(self, line_ending):
+        pass
+
+    def extract_go_general_features(self, go):
+        features = {}
+        if go['glyphObject']:
+            # get bounding box features
+            features['boundingBox'] = self.extract_bounding_box_features(go['glyphObject'])
+
+            # get group features
+            if 'style' in list(go.keys()):
+                features['graphicalShape'] = \
+                    self.extract_graphical_shape_features(libsbmlnetworkeditor.getRenderGroup(go['style']))
+
+            # get text features
+            if 'texts' in list(go.keys()):
+                for text in go['texts']:
+                    text['features'] = self.extract_go_text_features(text)
+
+
+        return features
+
+    def extract_go_text_features(self, text):
+        text_features = {}
+        # get plain text
+        if libsbmlnetworkeditor.isSetText(text['glyphObject']):
+            text_features['plainText'] = libsbmlnetworkeditor.getText(text['glyphObject'])
+        elif 'graphicalObject' in list(text.keys()):
+            if libsbmlnetworkeditor.isSetName(text['graphicalObject']):
+                text_features['plainText'] = libsbmlnetworkeditor.getName(text['graphicalObject'])
+            else:
+                text_features['plainText'] = libsbmlnetworkeditor.getId(text['graphicalObject'])
+        # get bounding box features of the text glyph
+        text_features['boundingBox'] = self.extract_bounding_box_features(text['glyphObject'])
+
+        # get group features
+        if 'style' in list(text.keys()):
+            text_features['graphicalText'] = self.extract_text_features(libsbmlnetworkeditor.getRenderGroup(text['style']))
+        return text_features
+
+    def extract_graphical_shape_features(self, group):
+        graphical_shape_info = {}
+        if group:
+            graphical_shape_info = self.extract_render_group_general_features(group)
+            graphical_shape_info['geometricShapes'] = self.extract_render_group_geometric_shapes(group)
+        return graphical_shape_info
+
+    @staticmethod
+    def extract_render_group_general_features(group):
+        render_group_general_features = {}
+        # get stroke color
+        if libsbmlnetworkeditor.isSetStrokeColor(group):
+            render_group_general_features['strokeColor'] = libsbmlnetworkeditor.getStrokeColor(group)
+
+        # get stroke width
+        if libsbmlnetworkeditor.isSetStrokeWidth(group):
+            render_group_general_features['strokeWidth'] = libsbmlnetworkeditor.getStrokeWidth(group)
+
+        # get stroke dash array
+        if libsbmlnetworkeditor.isSetStrokeDashArray(group):
+            dash_array = []
+            for d_index in range(libsbmlnetworkeditor.getNumStrokeDashes(group)):
+                dash_array.append(libsbmlnetworkeditor.getStrokeDash(group, d_index))
+            render_group_general_features['strokeDashArray'] = tuple(dash_array)
+
+        # get fill color
+        if libsbmlnetworkeditor.isSetFillColor(group):
+            render_group_general_features['fillColor'] = libsbmlnetworkeditor.getFillColor(group)
+
+        # get fill rule
+        if libsbmlnetworkeditor.isSetFillRule(group):
+            render_group_general_features['fillRule'] = libsbmlnetworkeditor.getFillRule(group)
+        return render_group_general_features
+
+    def extract_render_group_geometric_shapes(self, group):
+        geometric_shapes = []
+        if libsbmlnetworkeditor.getNumGeometricShapes(group):
+            for gs_index in range(libsbmlnetworkeditor.getNumGeometricShapes(group)):
+                gs = libsbmlnetworkeditor.getGeometricShape(group, gs_index)
+                geometric_shape = {}
+                geometric_shape.update(self.extract_geometric_shape_general_features(gs))
+                geometric_shape.update(self.extract_geometric_shape_exclusive_features(gs))
+                geometric_shapes.append(geometric_shape)
+
+        return geometric_shapes
+
+    @staticmethod
+    def extract_geometric_shape_general_features(gs):
+        geometric_shape_general_features = {}
+        # get stroke color
+        if libsbmlnetworkeditor.isSetStrokeColor(gs):
+            geometric_shape_general_features['strokeColor'] = libsbmlnetworkeditor.getStrokeColor(gs)
+
+        # get stroke width
+        if libsbmlnetworkeditor.isSetStrokeWidth(gs):
+            geometric_shape_general_features['strokeWidth'] = libsbmlnetworkeditor.getStrokeWidth(gs)
+
+        # get stroke dash array
+        if libsbmlnetworkeditor.isSetStrokeDashArray(gs):
+            dash_array = []
+            for d_index in range(libsbmlnetworkeditor.getNumStrokeDashes(gs)):
+                dash_array.append(libsbmlnetworkeditor.getStrokeDash(gs, d_index))
+            geometric_shape_general_features['strokeDashArray'] = tuple(dash_array)
+        return geometric_shape_general_features
+
+    def extract_geometric_shape_exclusive_features(self, gs):
+        if libsbmlnetworkeditor.isImage(gs):
+            return self.extract_image_shape_features(gs)
+        elif libsbmlnetworkeditor.isRenderCurve(gs):
+            return self.extract_curve_shape_features(gs)
+        elif libsbmlnetworkeditor.isText(gs):
+            return self.extract_text_shape_features(gs)
+        elif libsbmlnetworkeditor.isRectangle(gs):
+            return self.extract_rectangle_shape_features(gs)
+        elif libsbmlnetworkeditor.isEllipse(gs):
+            return self.extract_ellipse_shape_features(gs)
+        elif libsbmlnetworkeditor.isPolygon(gs):
+            return self.extract_polygon_shape_features(gs)
+
+    @staticmethod
+    def extract_text_features(group):
+        text_info = {}
+        if group:
+            # get stroke color
+            if libsbmlnetworkeditor.isSetFontColor(group):
+                text_info['strokeColor'] = libsbmlnetworkeditor.getFontColor(group)
+
+            # get font family
+            if libsbmlnetworkeditor.isSetFontFamily(group):
+                text_info['fontFamily'] = libsbmlnetworkeditor.getFontFamily(group)
+
+            # get font size
+            if libsbmlnetworkeditor.isSetFontSize(group):
+                rel_abs_vec = libsbmlnetworkeditor.getFontSize(group)
+                text_info['fontSize'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                         'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+            # get font weight
+            if libsbmlnetworkeditor.isSetFontWeight(group):
+                text_info['fontWeight'] = libsbmlnetworkeditor.getFontWeight(group)
+
+            # get font style
+            if libsbmlnetworkeditor.isSetFontStyle(group):
+                text_info['fontStyle'] = libsbmlnetworkeditor.getFontStyle(group)
+
+            # get horizontal text anchor
+            if libsbmlnetworkeditor.isSetTextAnchor(group):
+                text_info['hTextAnchor'] = libsbmlnetworkeditor.getTextAnchor(group)
+
+            # get vertical text anchor
+            if libsbmlnetworkeditor.isSetVTextAnchor(group):
+                text_info['vTextAnchor'] = libsbmlnetworkeditor.getVTextAnchor(group)
+
+            # get geometric shapes
+            if libsbmlnetworkeditor.getNumGeometricShapes(group):
+                geometric_shapes = []
+                for gs_index in range(libsbmlnetworkeditor.getNumGeometricShapes(group)):
+                    gs = libsbmlnetworkeditor.getGeometricShape(group, gs_index)
+
+                    if libsbmlnetworkeditor.isText(gs):
+                        geometric_shape_features = {}
+
+                        # get stroke color
+                        if libsbmlnetworkeditor.isSetFontColor(gs):
+                            geometric_shape_features['strokeColor'] = libsbmlnetworkeditor.getFontColor(gs)
+
+                        # get geometric shape specific features
+                        get_geometric_shape_exclusive_features(gs, geometric_shape_features)
+                        geometric_shapes.append(geometric_shape_features)
+
+                text_info['geometricShapes'] = geometric_shapes
+        return text_info
+
+    @staticmethod
+    def extract_image_shape_features(image_shape):
+        # set shape
+        image_shape_info = {'shape': "image"}
+
+        # get position x
+        if libsbmlnetworkeditor.isSetGeometricShapeX(image_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeX(image_shape)
+            image_shape_info['x'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                     'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get position y
+        if libsbmlnetworkeditor.isSetGeometricShapeY(image_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeY(image_shape)
+            image_shape_info['y'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                     'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get dimension width
+        if libsbmlnetworkeditor.isSetGeometricShapeWidth(image_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeWidth(image_shape)
+            image_shape_info['width'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                         'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get dimension height
+        if libsbmlnetworkeditor.isSetGeometricShapeHeight(image_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeHeight(image_shape)
+            image_shape_info['height'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                          'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get href
+        if libsbmlnetworkeditor.isSetGeometricShapeHref(image_shape):
+            image_shape_info['href'] = libsbmlnetworkeditor.getGeometricShapeHref(image_shape)
+
+        return image_shape_info
+
+    @staticmethod
+    def extract_curve_shape_features(curve_shape):
+        # set shape
+        curve_shape_info = {'shape': "renderCurve"}
+
+        vertices_ = []
+        for v_index in range(libsbmlnetworkeditor.getGeometricShapeNumElements(curve_shape)):
+            vertex_ = {}
+            vertex_['renderPointX'] = dict(
+                abs=libsbmlnetworkeditor.getAbsoluteValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementX(curve_shape, v_index)),
+                rel=libsbmlnetworkeditor.getRelativeValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementX(curve_shape, v_index)))
+            vertex_['renderPointY'] = dict(
+                abs=libsbmlnetworkeditor.getAbsoluteValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementY(curve_shape, v_index)),
+                rel=libsbmlnetworkeditor.getRelativeValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementY(curve_shape, v_index)))
+
+            if sbne.isRenderCubicBezier(curve_shape, v_index):
+                vertex_['basePoint1X'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint1X(curve_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint1X(curve_shape, v_index)))
+                vertex_['basePoint1Y'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint1Y(curve_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint1Y(curve_shape, v_index)))
+                vertex_['basePoint2X'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint2X(curve_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint2X(curve_shape, v_index)))
+                vertex_['basePoint2Y'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint2Y(curve_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(
+                        libsbmlnetworkeditor.getGeometricShapeBasePoint2Y(curve_shape, v_index)))
+
+            vertices_.append(vertex_)
+
+        curve_shape_info['vertices'] = vertices_
+
+        return curve_shape_info
+
+    @staticmethod
+    def extract_text_shape_features(text_shape):
+        # set shape
+        text_shape_info = {'shape': "text"}
+
+        # get position x
+        if libsbmlnetworkeditor.isSetGeometricShapeX(text_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeX(text_shape)
+            text_shape_info['x'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                    'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get position y
+        if libsbmlnetworkeditor.isSetGeometricShapeY(text_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeY(text_shape)
+            text_shape_info['y'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                    'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get font family
+        if libsbmlnetworkeditor.isSetFontFamily(text_shape):
+            text_shape_info['fontFamily'] = libsbmlnetworkeditor.getFontFamily(text_shape)
+
+        # get font size
+        if libsbmlnetworkeditor.isSetFontSize(text_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getFontSize(gs)
+            text_shape_info['fontSize'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                           'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get font weight
+        if libsbmlnetworkeditor.isSetFontWeight(text_shape):
+            text_shape_info['fontWeight'] = libsbmlnetworkeditor.getFontWeight(text_shape)
+
+        # get font style
+        if libsbmlnetworkeditor.isSetFontStyle(text_shape):
+            text_shape_info['fontStyle'] = libsbmlnetworkeditor.getFontStyle(text_shape)
+
+        # get horizontal text anchor
+        if libsbmlnetworkeditor.isSetTextAnchor(text_shape):
+            text_shape_info['hTextAnchor'] = libsbmlnetworkeditor.getTextAnchor(text_shape)
+
+        # get vertical text anchor
+        if libsbmlnetworkeditor.isSetVTextAnchor(text_shape):
+            text_shape_info['vTextAnchor'] = libsbmlnetworkeditor.getVTextAnchor(text_shape)
+
+        return text_shape_info
+
+    @staticmethod
+    def extract_rectangle_shape_features(rectangle_shape):
+        # set shape
+        rectangle_shape_info = {'shape': "rectangle"}
+
+        # get fill color
+        if libsbmlnetworkeditor.isSetFillColor(rectangle_shape):
+            rectangle_shape_info['fillColor'] = libsbmlnetworkeditor.getFillColor(rectangle_shape)
+
+        # get position x
+        if libsbmlnetworkeditor.isSetGeometricShapeX(rectangle_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeX(rectangle_shape)
+            rectangle_shape_info['x'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                         'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get position y
+        if libsbmlnetworkeditor.isSetGeometricShapeY(rectangle_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeY(rectangle_shape)
+            rectangle_shape_info['y'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                         'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get dimension width
+        if libsbmlnetworkeditor.isSetGeometricShapeWidth(rectangle_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeWidth(rectangle_shape)
+            rectangle_shape_info['width'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                             'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get dimension height
+        if libsbmlnetworkeditor.isSetGeometricShapeHeight(rectangle_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeHeight(rectangle_shape)
+            rectangle_shape_info['height'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                              'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get corner curvature radius rx
+        if libsbmlnetworkeditor.isSetGeometricShapeCornerCurvatureRadiusX(rectangle_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeCornerCurvatureRadiusX(rectangle_shape)
+            rectangle_shape_info['rx'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                          'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get corner curvature radius ry
+        if libsbmlnetworkeditor.isSetGeometricShapeCornerCurvatureRadiusY(rectangle_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeCornerCurvatureRadiusY(rectangle_shape)
+            rectangle_shape_info['ry'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                          'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get width/height ratio
+        if libsbmlnetworkeditor.isSetGeometricShapeRatio(rectangle_shape):
+            rectangle_shape_info['ratio'] = libsbmlnetworkeditor.getGeometricShapeRatio(rectangle_shape)
+
+        return rectangle_shape_info
+
+    @staticmethod
+    def extract_ellipse_shape_features(ellipse_shape):
+        # set shape
+        ellipse_shape_info = {'shape': "ellipse"}
+
+        # get fill color
+        if libsbmlnetworkeditor.isSetFillColor(ellipse_shape):
+            ellipse_shape_info['fillColor'] = libsbmlnetworkeditor.getFillColor(ellipse_shape)
+
+        # get position cx
+        if libsbmlnetworkeditor.isSetGeometricShapeCenterX(ellipse_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeCenterX(ellipse_shape)
+            ellipse_shape_info['cx'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                        'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get position cy
+        if libsbmlnetworkeditor.isSetGeometricShapeCenterY(ellipse_shape):
+            rel_abs_vec = libsbmlnetworkeditor.isSetGeometricShapeCenterY(ellipse_shape)
+            ellipse_shape_info['cy'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                        'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get dimension rx
+        if libsbmlnetworkeditor.isSetGeometricShapeRadiusX(ellipse_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeRadiusX(ellipse_shape)
+            ellipse_shape_info['rx'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                        'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get dimension ry
+        if libsbmlnetworkeditor.isSetGeometricShapeRadiusY(ellipse_shape):
+            rel_abs_vec = libsbmlnetworkeditor.getGeometricShapeRadiusY(ellipse_shape)
+            ellipse_shape_info['ry'] = {'abs': libsbmlnetworkeditor.getAbsoluteValue(rel_abs_vec),
+                                        'rel': libsbmlnetworkeditor.getRelativeValue(rel_abs_vec)}
+
+        # get radius ratio
+        if libsbmlnetworkeditor.isSetGeometricShapeRatio(ellipse_shape):
+            ellipse_shape_info['ratio'] = libsbmlnetworkeditor.getGeometricShapeRatio(ellipse_shape)
+
+        return ellipse_shape_info
+
+    @staticmethod
+    def extract_polygon_shape_features(polygon_shape):
+        # set shape
+        polygon_shape_info = {'shape': "polygon"}
+
+        # get fill color
+        if libsbmlnetworkeditor.isSetFillColor(polygon_shape):
+            polygon_shape_info['fillColor'] = libsbmlnetworkeditor.getFillColor(polygon_shape)
+
+        # get fill rule
+        if libsbmlnetworkeditor.isSetFillRule(polygon_shape):
+            polygon_shape_info['fillRule'] = libsbmlnetworkeditor.getFillRule(polygon_shape)
+
+        vertices_ = []
+        for v_index in range(libsbmlnetworkeditor.getGeometricShapeNumElements(polygon_shape)):
+            vertex_ = {}
+            vertex_['renderPointX'] = dict(
+                abs=libsbmlnetworkeditor.getAbsoluteValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementX(polygon_shape, v_index)),
+                rel=libsbmlnetworkeditor.getRelativeValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementX(polygon_shape, v_index)))
+            vertex_['renderPointY'] = dict(
+                abs=libsbmlnetworkeditor.getAbsoluteValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementY(polygon_shape, v_index)),
+                rel=libsbmlnetworkeditor.getRelativeValue(
+                    libsbmlnetworkeditor.getGeometricShapeElementY(polygon_shape, v_index)))
+
+            if sbne.isRenderCubicBezier(polygon_shape, v_index):
+                vertex_['basePoint1X'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getGeometricShapeBasePoint1X(polygon_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getGeometricShapeBasePoint1X(polygon_shape, v_index)))
+                vertex_['basePoint1Y'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getGeometricShapeBasePoint1Y(polygon_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getGeometricShapeBasePoint1Y(polygon_shape, v_index)))
+                vertex_['basePoint2X'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getGeometricShapeBasePoint2X(polygon_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getGeometricShapeBasePoint2X(polygon_shape, v_index)))
+                vertex_['basePoint2Y'] = dict(
+                    abs=libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getGeometricShapeBasePoint2Y(polygon_shape, v_index)),
+                    rel=libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getGeometricShapeBasePoint2Y(polygon_shape, v_index)))
+
+            vertices_.append(vertex_)
+
+        polygon_shape_info['vertices'] = vertices_
+
+        return polygon_shape_info
+
+    @staticmethod
+    def extract_bounding_box_features(go_object):
+        return {'x': libsbmlnetworkeditor.getPositionX(go_object), 'y': libsbmlnetworkeditor.getPositionY(go_object),
+                        'width': libsbmlnetworkeditor.getDimensionWidth(go_object), 'height': libsbmlnetworkeditor.getDimensionHeight(go_object)}
 
 
 
@@ -3556,7 +4019,9 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
 
 
 sbml_graph_info = SBMLGraphInfoImportFromSBMLModel2()
-sbml_graph_info.extract_info("/Users/home/Downloads/Simple - Brusselator31.xml")
+sbml_graph_info.extract_info("/Users/home/Downloads/adel.xml")
+sbml_export = SBMLGraphInfoExportToSBMLModel()
+sbml_export.extract_graph_info(sbml_graph_info)
 """
 sbml_graph_info = SBMLGraphInfoImportFromNetworkEditor()
 f = open("/Users/home/Downloads/network7.json")
