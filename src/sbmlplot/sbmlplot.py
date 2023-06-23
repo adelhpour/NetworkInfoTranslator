@@ -453,7 +453,20 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         pass
 
     def extract_line_ending_features(self, line_ending):
-        pass
+        line_ending['features'] = {}
+        if line_ending['lineEnding']:
+            # get bounding box features
+            bbox = libsbmlnetworkeditor.getBoundingBox(line_ending['lineEnding'])
+            line_ending['features']['boundingBox'] = {'x': libsbmlnetworkeditor.getPositionX(bbox), 'y': libsbmlnetworkeditor.getPositionY(bbox),
+                                                      'width': libsbmlnetworkeditor.getDimensionWidth(bbox),
+                                                      'height': libsbmlnetworkeditor.getDimensionHeight(bbox)}
+
+            line_ending['features']['graphicalShape'] = \
+                self.extract_graphical_shape_features(libsbmlnetworkeditor.getRenderGroup(line_ending['lineEnding']))
+
+            # get enable rotation
+            if libsbmlnetworkeditor.isSetEnableRotationalMapping(line_ending['lineEnding']):
+                line_ending['features']['enableRotation'] = libsbmlnetworkeditor.getEnableRotationalMapping(line_ending['lineEnding'])
 
     def extract_go_general_features(self, go):
         features = {}
@@ -898,7 +911,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
                 rel=libsbmlnetworkeditor.getRelativeValue(
                     libsbmlnetworkeditor.getGeometricShapeElementY(polygon_shape, v_index)))
 
-            if sbne.isRenderCubicBezier(polygon_shape, v_index):
+            if libsbmlnetworkeditor.isRenderCubicBezier(polygon_shape, v_index):
                 vertex_['basePoint1X'] = dict(
                     abs=libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getGeometricShapeBasePoint1X(polygon_shape, v_index)),
                     rel=libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getGeometricShapeBasePoint1X(polygon_shape, v_index)))
