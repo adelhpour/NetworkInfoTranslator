@@ -472,7 +472,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         features = {}
         if go['glyphObject']:
             # get bounding box features
-            features['boundingBox'] = self.extract_bounding_box_features(go['glyphObject'])
+            features['boundingBox'] = self.extract_bounding_box_features(libsbmlnetworkeditor.getBoundingBox(go['glyphObject']))
 
             # get group features
             if 'style' in list(go.keys()):
@@ -498,7 +498,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
             else:
                 text_features['plainText'] = libsbmlnetworkeditor.getId(text['graphicalObject'])
         # get bounding box features of the text glyph
-        text_features['boundingBox'] = self.extract_bounding_box_features(text['glyphObject'])
+        text_features['boundingBox'] = self.extract_bounding_box_features(libsbmlnetworkeditor.getBoundingBox(text['glyphObject']))
 
         # get group features
         if 'style' in list(text.keys()):
@@ -589,6 +589,20 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
                 gradient['features']['radius'] = \
                     {'abs': libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getRadialGradientR(gradient['gradientBase'])),
                      'rel': libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getRadialGradientR(gradient['gradientBase']))}
+
+    def extract_line_ending_features(self, line_ending):
+        line_ending['features'] = {}
+        if line_ending['lineEnding']:
+            # get bounding box features
+            line_ending['features']['boundingBox'] = self.extract_bounding_box_features(libsbmlnetworkeditor.getBoundingBoxOfLineEnding(line_ending['lineEnding']))
+
+            # get group features
+            line_ending['features']['graphicalShape'] = \
+                self.extract_graphical_shape_features(libsbmlnetworkeditor.getRenderGroup(line_ending['lineEnding']))
+
+            # get enable rotation
+            if libsbmlnetworkeditor.isSetEnableRotationalMapping(line_ending['lineEnding']):
+                line_ending['features']['enableRotation'] = libsbmlnetworkeditor.getEnableRotationalMapping(line_ending['lineEnding'])
 
     def extract_graphical_shape_features(self, group):
         graphical_shape_info = {}
@@ -1017,9 +1031,9 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         return polygon_shape_info
 
     @staticmethod
-    def extract_bounding_box_features(go_object):
-        return {'x': libsbmlnetworkeditor.getPositionX(go_object), 'y': libsbmlnetworkeditor.getPositionY(go_object),
-                        'width': libsbmlnetworkeditor.getDimensionWidth(go_object), 'height': libsbmlnetworkeditor.getDimensionHeight(go_object)}
+    def extract_bounding_box_features(bounding_box):
+        return {'x': libsbmlnetworkeditor.getPositionX(bounding_box), 'y': libsbmlnetworkeditor.getPositionY(bounding_box),
+                        'width': libsbmlnetworkeditor.getDimensionWidth(bounding_box), 'height': libsbmlnetworkeditor.getDimensionHeight(bounding_box)}
 
 
 
