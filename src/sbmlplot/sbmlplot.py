@@ -456,7 +456,7 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         line_ending['features'] = {}
         if line_ending['lineEnding']:
             # get bounding box features
-            bbox = libsbmlnetworkeditor.getBoundingBox(line_ending['lineEnding'])
+            bbox = libsbmlnetworkeditor.getBoundingBoxOfLineEnding(line_ending['lineEnding'])
             line_ending['features']['boundingBox'] = {'x': libsbmlnetworkeditor.getPositionX(bbox), 'y': libsbmlnetworkeditor.getPositionY(bbox),
                                                       'width': libsbmlnetworkeditor.getDimensionWidth(bbox),
                                                       'height': libsbmlnetworkeditor.getDimensionHeight(bbox)}
@@ -504,6 +504,14 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         if 'style' in list(text.keys()):
             text_features['graphicalText'] = self.extract_text_features(libsbmlnetworkeditor.getRenderGroup(text['style']))
         return text_features
+
+    @staticmethod
+    def extract_color_features(color):
+        color['features'] = {}
+        if color['colorDefinition']:
+            # get color value
+            if libsbmlnetworkeditor.isSetValue(color['colorDefinition']):
+                color['features']['value'] = libsbmlnetworkeditor.getValue(color['colorDefinition'])
 
     def extract_graphical_shape_features(self, group):
         graphical_shape_info = {}
