@@ -513,6 +513,83 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
             if libsbmlnetworkeditor.isSetValue(color['colorDefinition']):
                 color['features']['value'] = libsbmlnetworkeditor.getValue(color['colorDefinition'])
 
+    @staticmethod
+    def extract_gradient_features(gradient):
+        gradient['features'] = {}
+        if gradient['gradientBase']:
+            # get spread method
+            if libsbmlnetworkeditor.isSetSpreadMethod(gradient['gradientBase']):
+                gradient['features']['spreadMethod'] = libsbmlnetworkeditor.getSpreadMethod(gradient['gradientBase'])
+
+            # get gradient stops
+            stops_ = []
+            for s_index in range(libsbmlnetworkeditor.getNumGradientStops(gradient['gradientBase'])):
+                stop_ = {'gradientStop': libsbmlnetworkeditor.getGradientStop(gradient['gradientBase'], s_index)}
+
+                # get offset
+                if libsbmlnetworkeditor.isSetOffset(stop_['gradientStop']):
+                    stop_['offset'] = \
+                        {'abs': 0, 'rel': libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getOffset(stop_['gradientStop']))}
+
+                # get stop color
+                if libsbmlnetworkeditor.isSetStopColor(stop_['gradientStop']):
+                    stop_['color'] = libsbmlnetworkeditor.getStopColor(stop_['gradientStop'])
+                stops_.append(stop_)
+            gradient['features']['stops'] = stops_
+
+            # for linear gradient
+            if libsbmlnetworkeditor.isLinearGradient(gradient['gradientBase']):
+                # get start
+                gradient['features']['start'] = \
+                    {'x': {'abs':
+                               libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getLinearGradientX1(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getLinearGradientX1(gradient['gradientBase']))},
+                     'y': {'abs':
+                               libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getLinearGradientY1(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getLinearGradientY1(gradient['gradientBase']))}}
+
+                # get end
+                gradient['features']['end'] = \
+                    {'x': {'abs':
+                               libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getLinearGradientX2(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getLinearGradientX2(gradient['gradientBase']))},
+                     'y': {'abs':
+                               libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getLinearGradientY2(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getLinearGradientY2(gradient['gradientBase']))}}
+
+            # for radial gradient
+            elif libsbmlnetworkeditor.isLinearGradient(gradient['gradientBase']):
+                # get center
+                gradient['features']['center'] = \
+                    {'x': {'abs':
+                               libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getRadialGradientCx(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getRadialGradientCx(gradient['gradientBase']))},
+                     'y': {'abs':
+                               libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getRadialGradientCy(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getRadialGradientCy(gradient['gradientBase']))}}
+
+                # get focal
+                gradient['features']['focalPoint'] = \
+                    {'x': {'abs':
+                               libsbmlnetworkeditor.ne_rav_getAbsoluteValue(libsbmlnetworkeditor.getRadialGradientFx(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.ne_rav_getRelativeValue(libsbmlnetworkeditor.getRadialGradientFx(gradient['gradientBase']))},
+                     'y': {'abs':
+                               libsbmlnetworkeditor.ne_rav_getAbsoluteValue(libsbmlnetworkeditor.getRadialGradientFy(gradient['gradientBase'])),
+                           'rel':
+                               libsbmlnetworkeditor.ne_rav_getRelativeValue(libsbmlnetworkeditor.getRadialGradientFy(gradient['gradientBase']))}}
+
+                # get radius
+                gradient['features']['radius'] = \
+                    {'abs': libsbmlnetworkeditor.getAbsoluteValue(libsbmlnetworkeditor.getRadialGradientR(gradient['gradientBase'])),
+                     'rel': libsbmlnetworkeditor.getRelativeValue(libsbmlnetworkeditor.getRadialGradientR(gradient['gradientBase']))}
+
     def extract_graphical_shape_features(self, group):
         graphical_shape_info = {}
         if group:
