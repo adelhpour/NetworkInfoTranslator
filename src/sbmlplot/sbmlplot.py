@@ -495,6 +495,8 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
         elif 'graphicalObject' in list(text.keys()):
             if libsbmlnetworkeditor.isSetName(text['graphicalObject']):
                 text_features['plainText'] = libsbmlnetworkeditor.getName(text['graphicalObject'])
+            elif libsbmlnetworkeditor.getSBMLObjectId(self.layout, text['graphicalObject']):
+                text_features['plainText'] = libsbmlnetworkeditor.getSBMLObjectId(self.layout, text['graphicalObject'])
             else:
                 text_features['plainText'] = libsbmlnetworkeditor.getId(text['graphicalObject'])
         # get bounding box features of the text glyph
@@ -1034,8 +1036,6 @@ class SBMLGraphInfoImportFromSBMLModel2(SBMLGraphInfoImportBase):
     def extract_bounding_box_features(bounding_box):
         return {'x': libsbmlnetworkeditor.getPositionX(bounding_box), 'y': libsbmlnetworkeditor.getPositionY(bounding_box),
                         'width': libsbmlnetworkeditor.getDimensionWidth(bounding_box), 'height': libsbmlnetworkeditor.getDimensionHeight(bounding_box)}
-
-
 
 
 class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
@@ -4248,6 +4248,7 @@ sbml_graph_info = SBMLGraphInfoImportFromSBMLModel2()
 sbml_graph_info.extract_info("/Users/home/Downloads/adel.xml")
 sbml_export = SBMLGraphInfoExportToSBMLModel()
 sbml_export.extract_graph_info(sbml_graph_info)
+sbml_export.export("/Users/home/Downloads/Model.xml")
 """
 sbml_graph_info = SBMLGraphInfoImportFromNetworkEditor()
 f = open("/Users/home/Downloads/network7.json")
