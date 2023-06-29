@@ -1,3 +1,6 @@
+import matplotlib.colors as mcolors
+
+
 class NetworkInfoImportBase:
     def __init__(self):
         self.compartments = []

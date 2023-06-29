@@ -1,4 +1,5 @@
 from imports.import_base import NetworkInfoImportBase
+import webcolors
 
 
 class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):

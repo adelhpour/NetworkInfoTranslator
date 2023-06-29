@@ -1,4 +1,11 @@
 from exports.export_base import NetworkInfoExportBase
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch, Rectangle, Ellipse, Polygon, Path, PathPatch
+import matplotlib.transforms as plttransform
+import matplotlib.cbook as cbook
+import numpy as np
+import math
 
 
 class NetworkInfoExportToMatPlotLib(NetworkInfoExportBase):
