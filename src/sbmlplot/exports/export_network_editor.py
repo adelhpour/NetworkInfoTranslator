@@ -67,9 +67,9 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                 break
         if 'role' in list(species_reference.keys()):
             if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "side product":
-                edge['start'], edge['end'] = self.get_edge_nodes_features(reaction, species)
+                edge['source'], edge['target'] = self.get_edge_nodes_features(reaction, species)
             else:
-                edge['start'], edge['end'] = self.get_edge_nodes_features(species, reaction)
+                edge['source'], edge['target'] = self.get_edge_nodes_features(species, reaction)
 
     def extract_node_features(self, go, node, style):
         if 'features' in list(go.keys()):
@@ -105,23 +105,23 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         return {'width': go['features']['boundingBox']['width'],
                 'height': go['features']['boundingBox']['height']}
 
-    def get_edge_nodes_features(self, start_go, end_go):
-        start_node_features = {'node': start_go['id']}
-        end_node_features = {'node': end_go['id']}
-        start_node_position = self.get_node_position(start_go)
-        start_node_dimensions = self.get_node_dimensions(start_go)
-        end_node_position = self.get_node_position(end_go)
-        end_node_dimensions = self.get_node_dimensions(end_go)
-        start_node_radius = 0.5 * max(start_node_dimensions['width'], start_node_dimensions['height'])
-        end_node_radius = 0.5 * max(end_node_dimensions['width'], end_node_dimensions['height'])
-        slope = math.atan2(end_node_position['y'] - start_node_position['y'],
-                           end_node_position['x'] - start_node_position['x']);
-        start_node_features['position'] = {'x': start_node_position['x'] + start_node_radius * math.cos(slope),
-                                           'y': start_node_position['y'] + start_node_radius * math.sin(slope)}
-        end_node_features['position'] = {'x': end_node_position['x'] - end_node_radius * math.cos(slope),
-                                         'y': end_node_position['y'] + end_node_radius * math.sin(slope)}
+    def get_edge_nodes_features(self, source_go, target_go):
+        source_node_features = {'node': source_go['id']}
+        target_node_features = {'node': target_go['id']}
+        source_node_position = self.get_node_position(source_go)
+        source_node_dimensions = self.get_node_dimensions(source_go)
+        target_node_position = self.get_node_position(target_go)
+        target_node_dimensions = self.get_node_dimensions(target_go)
+        source_node_radius = 0.5 * max(source_node_dimensions['width'], source_node_dimensions['height'])
+        target_node_radius = 0.5 * max(target_node_dimensions['width'], target_node_dimensions['height'])
+        slope = math.atan2(target_node_position['y'] - source_node_position['y'],
+                           target_node_position['x'] - source_node_position['x'])
+        source_node_features['position'] = {'x': source_node_position['x'] + source_node_radius * math.cos(slope),
+                                           'y': source_node_position['y'] + source_node_radius * math.sin(slope)}
+        target_node_features['position'] = {'x': target_node_position['x'] - target_node_radius * math.cos(slope),
+                                         'y': target_node_position['y'] + target_node_radius * math.sin(slope)}
 
-        return start_node_features, end_node_features
+        return source_node_features, target_node_features
 
     def get_shape_style(self, go, offset_x=0.0, offset_y=0.0):
         geometric_shapes = []
