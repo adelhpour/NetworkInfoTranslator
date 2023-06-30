@@ -1,7 +1,7 @@
 from imports.import_base import NetworkInfoImportBase
 
 
-class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
+class NetworkInfoImportFromSBMLModelUsingLibSBNE(NetworkInfoImportBase):
     def __init__(self):
         super().__init__()
         self.is_layout_modified = False
