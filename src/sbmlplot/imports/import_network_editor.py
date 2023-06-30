@@ -1,4 +1,6 @@
 from imports.import_base import NetworkInfoImportBase
+import json
+import math
 import webcolors
 
 
@@ -6,10 +8,13 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
     def __init__(self):
         super().__init__()
 
-    def extract_info(self, graph_info):
-        super().extract_info(graph_info)
-        self.extract_extents(graph_info)
-        self.extract_entities(graph_info)
+    def extract_info(self, graph):
+        super().extract_info(graph)
+
+        f =  open(graph)
+        self.graph_info = json.load(f)
+        self.extract_extents(self.graph_info)
+        self.extract_entities(self.graph_info)
 
     def extract_extents(self, graph_info):
         if 'position' in list(graph_info.keys()):
@@ -62,12 +67,12 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
             reaction_['speciesReferences'] = []
             if 'edges' in list(graph_info.keys()):
                 for edge in graph_info['edges']:
-                    if ('start' in list(edge.keys()) and
-                        'node' in list(edge['start'].keys()) and
-                        edge['start']['node'] == reaction_['referenceId']) or \
-                            ('end' in list(edge.keys()) and
-                             'node' in list(edge['end'].keys()) and
-                             edge['end']['node'] == reaction_['referenceId']):
+                    if ('source' in list(edge.keys()) and
+                        'node' in list(edge['source'].keys()) and
+                        edge['source']['node'] == reaction_['referenceId']) or \
+                            ('target' in list(edge.keys()) and
+                             'node' in list(edge['target'].keys()) and
+                             edge['target']['node'] == reaction_['referenceId']):
                         self.add_species_reference(reaction_['speciesReferences'], edge)
             self.reactions.append(reaction_)
 
@@ -164,26 +169,26 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
 
     def extract_edge_features(self, edge):
         edge['features'] = {}
-        if 'start' in list(edge['info'].keys()):
-            if 'node' in list(edge['info']['start'].keys()):
-                if self.find_species(edge['info']['start']['node']):
-                    edge['species'] = edge['info']['start']['node']
-                    edge['speciesGlyph'] = edge['info']['start']['node'] + "_glyph"
-                elif self.find_reaction(edge['info']['start']['node']):
-                    edge['reaction'] = edge['info']['start']['node']
-                    edge['reactionGlyph'] = edge['info']['start']['node'] + "_glyph"
-            if 'position' in list(edge['info']['start'].keys()):
-                edge['features']['startPoint'] = edge['info']['start']['position']
-        if 'end' in list(edge['info'].keys()):
-            if 'node' in list(edge['info']['end'].keys()):
-                if self.find_species(edge['info']['end']['node']):
-                    edge['species'] = edge['info']['end']['node']
-                    edge['speciesGlyph'] = edge['info']['end']['node'] + "_glyph"
-                elif self.find_reaction(edge['info']['end']['node']):
-                    edge['reaction'] = edge['info']['end']['node']
-                    edge['reaction'] = edge['info']['end']['node'] + "_glyph"
-            if 'position' in list(edge['info']['end'].keys()):
-                edge['features']['endPoint'] = edge['info']['end']['position']
+        if 'source' in list(edge['info'].keys()):
+            if 'node' in list(edge['info']['source'].keys()):
+                if self.find_species(edge['info']['source']['node']):
+                    edge['species'] = edge['info']['source']['node']
+                    edge['speciesGlyph'] = edge['info']['source']['node'] + "_glyph"
+                elif self.find_reaction(edge['info']['source']['node']):
+                    edge['reaction'] = edge['info']['source']['node']
+                    edge['reactionGlyph'] = edge['info']['source']['node'] + "_glyph"
+            if 'position' in list(edge['info']['source'].keys()):
+                edge['features']['startPoint'] = edge['info']['source']['position']
+        if 'target' in list(edge['info'].keys()):
+            if 'node' in list(edge['info']['target'].keys()):
+                if self.find_species(edge['info']['target']['node']):
+                    edge['species'] = edge['info']['target']['node']
+                    edge['speciesGlyph'] = edge['info']['target']['node'] + "_glyph"
+                elif self.find_reaction(edge['info']['target']['node']):
+                    edge['reaction'] = edge['info']['target']['node']
+                    edge['reaction'] = edge['info']['target']['node'] + "_glyph"
+            if 'position' in list(edge['info']['target'].keys()):
+                edge['features']['endPoint'] = edge['info']['target']['position']
 
         curve_ = []
         if 'x' in list(edge['features']['startPoint'].keys()) and \
