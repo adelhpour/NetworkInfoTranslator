@@ -24,6 +24,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         node_ = self.initialize_node(go)
         self.set_node_biggid(node_, go)
         self.set_node_type(node_, go, category)
+        self.set_node_is_primary(node_, go)
         self.extract_node_features(go, node_)
         self.nodes.update(node_)
 
@@ -43,26 +44,33 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         elif category == "Reaction":
             node[go['id']]['type'] = "midmarker"
 
+    @staticmethod
+    def set_node_is_primary(node, go):
+        node[go['id']]['node_is_primary'] = True
+
     def extract_node_features(self, go, node):
         if 'features' in list(go.keys()):
             if 'boundingBox' in list(go['features'].keys()):
-                node[go['id']]['x'] = self.get_node_center_x(go)
-                node[go['id']]['y'] = self.get_node_center_y(go)
+                node[go['id']]['x'] = self.get_center_x(go['features']['boundingBox'])
+                node[go['id']]['y'] = self.get_center_y(go['features']['boundingBox'])
             elif 'curve' in list(go['features'].keys()):
                 print("has curve")
 
-            #if 'texts' in list(go.keys()):
-                #for text in go['texts']:
-                    #if 'features' in list(text.keys()):
-                        #style['shapes'].append(self.get_node_text(text, go['features']['boundingBox']))
+            if 'texts' in list(go.keys()):
+                for text in go['texts']:
+                    if 'features' in list(text.keys()):
+                        if 'plainText' in list(text['features'].keys()):
+                            node[go['id']]['name'] = text['features']['plainText']
+                        if 'boundingBox' in list(text['features'].keys()):
+                            node[go['id']]['label_x'] = self.get_center_x(text['features']['boundingBox'])
+                            node[go['id']]['label_y'] = self.get_center_y(text['features']['boundingBox'])
+    @staticmethod
+    def get_center_x(bounding_box):
+        return bounding_box['x'] + 0.5 * bounding_box['width']
 
     @staticmethod
-    def get_node_center_x(go):
-        return go['features']['boundingBox']['x'] + 0.5 * go['features']['boundingBox']['width']
-
-    @staticmethod
-    def get_node_center_y(go):
-        return go['features']['boundingBox']['y'] + 0.5 * go['features']['boundingBox']['height']
+    def get_center_y(bounding_box):
+        return bounding_box['y'] + 0.5 * bounding_box['height']
 
     def export(self, file_name="file"):
         position_x = self.graph_info.extents['minX'] + 0.5 * (self.graph_info.extents['maxX'] - self.graph_info.extents['minX'])
