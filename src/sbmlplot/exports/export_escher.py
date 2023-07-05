@@ -51,10 +51,11 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
     def extract_node_features(self, go, node):
         if 'features' in list(go.keys()):
             if 'boundingBox' in list(go['features'].keys()):
-                node[go['id']]['x'] = self.get_center_x(go['features']['boundingBox'])
-                node[go['id']]['y'] = self.get_center_y(go['features']['boundingBox'])
+                node[go['id']]['x'] = self.get_bb_center_x(go['features']['boundingBox'])
+                node[go['id']]['y'] = self.get_bb_center_y(go['features']['boundingBox'])
             elif 'curve' in list(go['features'].keys()):
-                print("has curve")
+                node[go['id']]['x'] = self.get_curve_center_x(go['features']['boundingBox'])
+                node[go['id']]['y'] = self.get_curve_center_y(go['features']['boundingBox'])
 
             if 'texts' in list(go.keys()):
                 for text in go['texts']:
@@ -62,15 +63,27 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                         if 'plainText' in list(text['features'].keys()):
                             node[go['id']]['name'] = text['features']['plainText']
                         if 'boundingBox' in list(text['features'].keys()):
-                            node[go['id']]['label_x'] = self.get_center_x(text['features']['boundingBox'])
-                            node[go['id']]['label_y'] = self.get_center_y(text['features']['boundingBox'])
+                            node[go['id']]['label_x'] = self.get_bb_center_x(text['features']['boundingBox'])
+                            node[go['id']]['label_y'] = self.get_bb_center_y(text['features']['boundingBox'])
     @staticmethod
-    def get_center_x(bounding_box):
+    def get_bb_center_x(bounding_box):
         return bounding_box['x'] + 0.5 * bounding_box['width']
 
     @staticmethod
-    def get_center_y(bounding_box):
+    def get_bb_center_y(bounding_box):
         return bounding_box['y'] + 0.5 * bounding_box['height']
+
+    @staticmethod
+    def get_curve_center_x(curve):
+        if len(curve):
+            return 0.5 * (curve[0]['startX'] + curve[len(curve) - 1]['endX'])
+        return 0.0
+
+    @staticmethod
+    def get_curve_center_y(curve):
+        if len(curve):
+            return 0.5 * (curve[0]['startY'] + curve[len(curve) - 1]['endY'])
+        return 0.0
 
     def export(self, file_name="file"):
         position_x = self.graph_info.extents['minX'] + 0.5 * (self.graph_info.extents['maxX'] - self.graph_info.extents['minX'])
