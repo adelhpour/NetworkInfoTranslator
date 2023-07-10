@@ -14,23 +14,59 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
 
     def add_species(self, species):
         if 'id' in list(species.keys()) and 'referenceId' in list(species.keys()):
-            self.add_node(species, "Species")
+            node = self.create_node_from_species(species)
+            self.nodes.update(node)
 
     def add_reaction(self, reaction):
         if 'id' in list(reaction.keys()) and 'referenceId' in list(reaction.keys()):
-            self.add_node(reaction, "Reaction")
+            node = self.create_node_from_reaction(reaction)
+            self.nodes.update(node)
 
-    def add_node(self, go, category=""):
-        node_ = self.initialize_node(go)
-        self.set_node_biggid(node_, go)
-        self.set_node_type(node_, go, category)
-        self.set_node_is_primary(node_, go)
-        self.extract_node_features(go, node_)
-        self.nodes.update(node_)
+            if 'speciesReferences' in list(reaction.keys()):
+                for species_reference in reaction['speciesReferences']:
+                    self.add_species_reference(reaction, species_reference)
+
+    def add_species_reference(self, reaction, species_reference):
+        if 'id' in list(species_reference.keys()) and 'referenceId' in list(species_reference.keys()) \
+                and 'species' in list(species_reference.keys()) and 'features' in list(species_reference.keys()):
+            sr_index = len(species_reference['features']['curve']) - 1
+            while sr_index > 0:
+                node = self.create_node_from_species_reference(reaction, species_reference, sr_index)
+                self.nodes.update(node)
+                sr_index = sr_index - 1
+
+    def create_node_from_species(self, species):
+        node = self.initialize_graphical_object(species)
+        self.set_node_biggid(node, species)
+        self.set_node_is_primary(node, species)
+        self.extract_node_features(species, node)
+        node[species['id']]['type'] = "metabolite"
+        return node
+
+    def create_node_from_reaction(self, reaction):
+        node = self.initialize_graphical_object(reaction)
+        self.set_node_biggid(node, reaction)
+        self.set_node_is_primary(node, reaction)
+        self.extract_node_features(reaction, node)
+        node[reaction['id']]['type'] = "midmarker"
+        return node
+
+    def create_node_from_species_reference(self, reaction, species_reference, sr_index):
+        return self.initialize_species_reference_node(reaction, species_reference, sr_index)
 
     @staticmethod
-    def initialize_node(go):
+    def initialize_graphical_object(go):
         return {go['id']: {}}
+
+    @staticmethod
+    def initialize_species_reference_node(reaction, species_reference, sr_index):
+        species_reference_node_features = {'type': "multimarker"}
+        species_reference_node_features['x'] = 0.5 * (species_reference['features']['curve'][sr_index]['startX'] +
+                                                      species_reference['features']['curve'][sr_index - 1]['endX'])
+        species_reference_node_features['y'] = 0.5 * (species_reference['features']['curve'][sr_index]['startY'] +
+                                                      species_reference['features']['curve'][sr_index - 1]['endY'])
+        return {reaction['id'] + "." + species_reference['id'] + ".M" + str(sr_index + 1):
+                    species_reference_node_features}
 
     @staticmethod
     def set_node_biggid(node, go):
