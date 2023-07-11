@@ -11,6 +11,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
     def reset(self):
         super().reset()
         self.nodes = {}
+        self.reactions = {}
 
     def add_species(self, species):
         if 'id' in list(species.keys()) and 'referenceId' in list(species.keys()):
@@ -21,6 +22,8 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         if 'id' in list(reaction.keys()) and 'referenceId' in list(reaction.keys()):
             node = self.create_node_from_reaction(reaction)
             self.nodes.update(node)
+            escher_reaction = self.create_reaction(reaction)
+            self.reactions.update(escher_reaction)
 
             if 'speciesReferences' in list(reaction.keys()):
                 for species_reference in reaction['speciesReferences']:
@@ -36,16 +39,16 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                 sr_index = sr_index - 1
 
     def create_node_from_species(self, species):
-        node = self.initialize_graphical_object(species)
-        self.set_node_biggid(node, species)
+        node = self.initialize_item(species)
+        self.set_item_biggid(node, species)
         self.set_node_is_primary(node, species)
         self.extract_node_features(species, node)
         node[species['id']]['type'] = "metabolite"
         return node
 
     def create_node_from_reaction(self, reaction):
-        node = self.initialize_graphical_object(reaction)
-        self.set_node_biggid(node, reaction)
+        node = self.initialize_item(reaction)
+        self.set_item_biggid(node, reaction)
         self.set_node_is_primary(node, reaction)
         self.extract_node_features(reaction, node)
         node[reaction['id']]['type'] = "midmarker"
@@ -54,8 +57,13 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
     def create_node_from_species_reference(self, reaction, species_reference, sr_index):
         return self.initialize_species_reference_node(reaction, species_reference, sr_index)
 
+    def create_reaction(self, reaction):
+        escher_recaction = self.initialize_item(reaction)
+        self.set_item_biggid(escher_recaction, reaction)
+        return escher_recaction
+
     @staticmethod
-    def initialize_graphical_object(go):
+    def initialize_item(go):
         return {go['id']: {}}
 
     @staticmethod
@@ -69,9 +77,9 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                     species_reference_node_features}
 
     @staticmethod
-    def set_node_biggid(node, go):
+    def set_item_biggid(item, go):
         if 'referenceId' in list(go.keys()):
-            node[go['id']]['bigg_id'] = go['referenceId']
+            item[go['id']]['bigg_id'] = go['referenceId']
 
     @staticmethod
     def set_node_type(node, go, category):
@@ -130,7 +138,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                       'name': pathlib(file_name).stem + "_graph",
                       'canvas': {'x': position_x, 'y': position_y, 'width': dimensions_width, 'height': dimensions_height},
                       'nodes': self.nodes,
-                      'reactions': {}}]
+                      'reactions': self.reactions}]
         with open(file_name.split('.')[0] + ".json", 'w', encoding='utf8') as js_file:
             json.dump(graph_info, js_file, indent=1)
         return graph_info
