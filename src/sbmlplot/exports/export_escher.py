@@ -42,7 +42,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         node = self.initialize_item(species)
         self.set_item_biggid(node, species)
         self.set_node_is_primary(node, species)
-        self.extract_node_features(species, node)
+        self.extract_node_features(node, species)
         node[species['id']]['type'] = "metabolite"
         return node
 
@@ -50,7 +50,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         node = self.initialize_item(reaction)
         self.set_item_biggid(node, reaction)
         self.set_node_is_primary(node, reaction)
-        self.extract_node_features(reaction, node)
+        self.extract_node_features(node, reaction)
         node[reaction['id']]['type'] = "midmarker"
         return node
 
@@ -60,6 +60,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
     def create_reaction(self, reaction):
         escher_recaction = self.initialize_item(reaction)
         self.set_item_biggid(escher_recaction, reaction)
+        self.extract_reaction_features(escher_recaction, reaction)
         return escher_recaction
 
     @staticmethod
@@ -92,23 +93,29 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
     def set_node_is_primary(node, go):
         node[go['id']]['node_is_primary'] = True
 
-    def extract_node_features(self, go, node):
+    def extract_node_features(self, node, go):
         if 'features' in list(go.keys()):
-            if 'boundingBox' in list(go['features'].keys()):
-                node[go['id']]['x'] = self.get_bb_center_x(go['features']['boundingBox'])
-                node[go['id']]['y'] = self.get_bb_center_y(go['features']['boundingBox'])
-            elif 'curve' in list(go['features'].keys()):
-                node[go['id']]['x'] = self.get_curve_center_x(go['features']['boundingBox'])
-                node[go['id']]['y'] = self.get_curve_center_y(go['features']['boundingBox'])
+            node[go['id']]['x'], node[go['id']]['y'] = self.get_position(go['features'])
 
             if 'texts' in list(go.keys()):
                 for text in go['texts']:
                     if 'features' in list(text.keys()):
-                        if 'plainText' in list(text['features'].keys()):
-                            node[go['id']]['name'] = text['features']['plainText']
-                        if 'boundingBox' in list(text['features'].keys()):
-                            node[go['id']]['label_x'] = self.get_bb_center_x(text['features']['boundingBox'])
-                            node[go['id']]['label_y'] = self.get_bb_center_y(text['features']['boundingBox'])
+                        node[go['id']]['name'] = self.get_name(text['features'])
+                        node[go['id']]['label_x'], node[go['id']]['label_y'] = self.get_position(text['features'])
+
+
+    def extract_reaction_features(self, escher_recaction, reaction):
+        if 'features' in list(reaction.keys()):
+            escher_recaction[reaction['id']]['label_x'], escher_recaction[reaction['id']]['label_y'] =\
+                self.get_position(reaction['features'])
+
+    def get_position(self, features):
+        if 'boundingBox' in list(features.keys()):
+            return self.get_bb_center_x(features['boundingBox']), self.get_bb_center_y(features['boundingBox'])
+        elif 'curve' in list(go['features'].keys()):
+            return self.get_curve_center_x(features['curve']), self.get_curve_center_y(features['curve'])
+        return 0.0, 0.0
+
     @staticmethod
     def get_bb_center_x(bounding_box):
         return bounding_box['x'] + 0.5 * bounding_box['width']
@@ -128,6 +135,12 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         if len(curve):
             return 0.5 * (curve[0]['startY'] + curve[len(curve) - 1]['endY'])
         return 0.0
+
+    @staticmethod
+    def get_name(features):
+        if 'plainText' in list(features.keys()):
+            return features['plainText']
+        return ""
 
     def export(self, file_name="file"):
         position_x = self.graph_info.extents['minX'] + 0.5 * (self.graph_info.extents['maxX'] - self.graph_info.extents['minX'])
