@@ -20,10 +20,8 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
 
     def add_reaction(self, reaction):
         if 'id' in list(reaction.keys()) and 'referenceId' in list(reaction.keys()):
-            node = self.create_node_from_reaction(reaction)
-            self.nodes.update(node)
-            escher_reaction = self.create_reaction(reaction)
-            self.reactions.update(escher_reaction)
+            self.nodes.update(self.create_node_from_reaction(reaction))
+            self.reactions.update(self.create_escher_reaction(reaction))
 
             if 'speciesReferences' in list(reaction.keys()):
                 for species_reference in reaction['speciesReferences']:
@@ -34,8 +32,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                 and 'species' in list(species_reference.keys()) and 'features' in list(species_reference.keys()):
             sr_index = len(species_reference['features']['curve']) - 1
             while sr_index > 0:
-                node = self.create_node_from_species_reference(reaction, species_reference, sr_index)
-                self.nodes.update(node)
+                self.nodes.update(self.create_node_from_species_reference(reaction, species_reference, sr_index))
                 sr_index = sr_index - 1
 
     def create_node_from_species(self, species):
@@ -57,10 +54,10 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
     def create_node_from_species_reference(self, reaction, species_reference, sr_index):
         return self.initialize_species_reference_node(reaction, species_reference, sr_index)
 
-    def create_reaction(self, reaction):
+    def create_escher_reaction(self, reaction):
         escher_recaction = self.initialize_item(reaction)
         self.set_item_biggid(escher_recaction, reaction)
-        self.extract_reaction_features(escher_recaction, reaction)
+        self.extract_escher_reaction_features(escher_recaction, reaction)
         return escher_recaction
 
     @staticmethod
@@ -83,13 +80,6 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
             item[go['id']]['bigg_id'] = go['referenceId']
 
     @staticmethod
-    def set_node_type(node, go, category):
-        if category == "Species":
-            node[go['id']]['type'] = "metabolite"
-        elif category == "Reaction":
-            node[go['id']]['type'] = "midmarker"
-
-    @staticmethod
     def set_node_is_primary(node, go):
         node[go['id']]['node_is_primary'] = True
 
@@ -104,10 +94,31 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                         node[go['id']]['label_x'], node[go['id']]['label_y'] = self.get_position(text['features'])
 
 
-    def extract_reaction_features(self, escher_recaction, reaction):
+    def extract_escher_reaction_features(self, escher_recaction, reaction):
         if 'features' in list(reaction.keys()):
             escher_recaction[reaction['id']]['label_x'], escher_recaction[reaction['id']]['label_y'] =\
                 self.get_position(reaction['features'])
+
+        if 'speciesReferences' in list(reaction.keys()):
+            metabolites = []
+            for species_reference in reaction['speciesReferences']:
+                if 'role' in list(species_reference.keys()):
+                    if species_reference['role'].lower() == "product":
+                        metabolites.append(self.create_metabolite_from_product(species_reference))
+                    if species_reference['role'].lower() == "reactant" or species_reference['role'].lower() == "substrate":
+                        metabolites.append(self.create_metabolite_from_substrate(species_reference))
+            print(metabolites)
+            escher_recaction[reaction['id']]['metabolites'] = metabolites
+
+    def create_metabolite_from_product(self, species_reference):
+        #return
+        #metabolite = self.initialize_item(species_reference)
+        return {species_reference['species']: {}}
+
+    def create_metabolite_from_substrate(self, species_reference):
+        #return
+        #metabolite = self.initialize_item(species_reference)
+        return {species_reference['species']: {}}
 
     def get_position(self, features):
         if 'boundingBox' in list(features.keys()):
