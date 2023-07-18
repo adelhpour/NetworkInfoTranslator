@@ -14,7 +14,6 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def extract_info(self, graph):
         super().extract_info(graph)
-
         self.document = libsbmlnetworkeditor.readSBML(graph)
         self.extract_layout_info(self.document)
         self.extract_render_info(self.document)
@@ -109,6 +108,8 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                 libsbmlnetworkeditor.getSpeciesGlyphId(species_reference_object)
             if libsbmlnetworkeditor.isSetRole(species_reference_object):
                 species_reference['role'] = libsbmlnetworkeditor.getRole(species_reference_object)
+            #if species_reference_object.isSetStoichiometry():
+                #species_reference['stoichiometry'] = species_reference_object.getStoichiometry()
             reaction['speciesReferences'].append(species_reference)
 
         self.reactions.append(reaction)
@@ -193,16 +194,15 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
             features['metaId'] = libsbmlnetworkeditor.getMetaId(go_object)
         # text
         features['texts'] = []
-        for text_index in range(libsbmlnetworkeditor.getNumAssociatedTextGlyphs(self.layout, go_object)):
-            features['texts'].append(self.extract_text_object_features(libsbmlnetworkeditor.getAssociatedTextGlyph(self.layout, go_object, text_index)))
+        for text_index in range(libsbmlnetworkeditor.getNumTextGlyphs(self.layout, go_object)):
+            features['texts'].append(self.extract_text_object_features(libsbmlnetworkeditor.getTextGlyph(self.layout, go_object, text_index)))
 
         return features
 
     def extract_text_object_features(self, text_object):
         text = {'glyphObject': text_object, 'id': libsbmlnetworkeditor.getId(text_object)}
         if libsbmlnetworkeditor.isSetGraphicalObjectId(text_object):
-            text['graphicalObject'] = \
-                libsbmlnetworkeditor.getGraphicalObject(self.layout, libsbmlnetworkeditor.getGraphicalObjectId(text_object))
+            text['graphicalObject'] = libsbmlnetworkeditor.getGraphicalObject(self.layout, text_object)
         ## add originOfText
         return text
 

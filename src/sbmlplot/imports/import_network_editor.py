@@ -10,9 +10,11 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
 
     def extract_info(self, graph):
         super().extract_info(graph)
-
-        f =  open(graph)
-        self.graph_info = json.load(f)
+        if type(graph) == str:
+            f = open(graph)
+            self.graph_info = json.load(f)
+        else:
+            self.graph_info = graph
         self.extract_extents(self.graph_info)
         self.extract_entities(self.graph_info)
 

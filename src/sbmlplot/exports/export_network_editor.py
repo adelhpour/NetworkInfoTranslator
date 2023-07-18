@@ -334,17 +334,21 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                                      offset_y=line_ending['features']['boundingBox']['y'])
         return line_ending_style
 
-    def export(self, file_name="file"):
-        position = {'x': self.graph_info.extents['minX'] + 0.5 * (self.graph_info.extents['maxX'] - self.graph_info.extents['minX']),
-                    'y': self.graph_info.extents['minY'] + 0.5 * (self.graph_info.extents['maxY'] - self.graph_info.extents['minY'])}
+    def get_graph_info(self, file_name="file"):
+        position = {'x': self.graph_info.extents['minX'] + 0.5 * (
+                    self.graph_info.extents['maxX'] - self.graph_info.extents['minX']),
+                    'y': self.graph_info.extents['minY'] + 0.5 * (
+                                self.graph_info.extents['maxY'] - self.graph_info.extents['minY'])}
         dimensions = {'width': self.graph_info.extents['maxX'] - self.graph_info.extents['minX'],
                       'height': self.graph_info.extents['maxY'] - self.graph_info.extents['minY']}
-        graph_info = {'generated_by': "SBMLplot",
+        return {'generated_by': "SBMLplot",
                       'name': pathlib(file_name).stem + "_graph",
                       'position': position,
                       'dimensions': dimensions,
                       'nodes': self.nodes,
                       'edges': self.edges}
+
+    def export(self, file_name="file"):
+        graph_info = self.get_graph_info(file_name)
         with open(file_name.split('.')[0] + ".json", 'w', encoding='utf8') as js_file:
             json.dump(graph_info, js_file, indent=1)
-        return graph_info
