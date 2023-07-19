@@ -107,6 +107,7 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                 libsbmlnetworkeditor.getSpeciesGlyphId(species_reference_object))
             species_reference['speciesGlyph'] = \
                 libsbmlnetworkeditor.getSpeciesGlyphId(species_reference_object)
+            species_reference['SBMLObject'] = self.get_sbml_species_reference_object(species_reference_object, reaction_object)
             if libsbmlnetworkeditor.isSetRole(species_reference_object):
                 species_reference['role'] = libsbmlnetworkeditor.getRole(species_reference_object)
             reaction['speciesReferences'].append(species_reference)
@@ -185,6 +186,11 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                         style = libsbmlnetworkeditor.getStyle(self.global_render, species_reference['glyphObject'])
                     species_reference['style'] = style
 
+    def get_sbml_species_reference_object(self, species_reference_object, reaction_object):
+        reaction_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, reaction_object)
+        species_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, libsbmlnetworkeditor.getSpeciesGlyphId(species_reference_object))
+        return libsbmlnetworkeditor.getSpeciesReference(self.document, reaction_id, species_id)
+
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
                     'id': libsbmlnetworkeditor.getId(go_object)}
@@ -193,8 +199,8 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
             features['metaId'] = libsbmlnetworkeditor.getMetaId(go_object)
         # text
         features['texts'] = []
-        for text_index in range(libsbmlnetworkeditor.getNumAssociatedTextGlyphs(self.layout, go_object)):
-            features['texts'].append(self.extract_text_object_features(libsbmlnetworkeditor.getAssociatedTextGlyph(self.layout, go_object, text_index)))
+        for text_index in range(libsbmlnetworkeditor.getNumTextGlyphs(self.layout, go_object)):
+            features['texts'].append(self.extract_text_object_features(libsbmlnetworkeditor.getTextGlyph(self.layout, go_object, text_index)))
 
         return features
 
