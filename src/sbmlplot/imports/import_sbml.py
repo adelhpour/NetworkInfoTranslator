@@ -189,7 +189,10 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
     def get_sbml_species_reference_object(self, species_reference_object, reaction_object):
         reaction_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, reaction_object)
         species_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, libsbmlnetworkeditor.getSpeciesGlyphId(species_reference_object))
-        return libsbmlnetworkeditor.getSpeciesReference(self.document, reaction_id, species_id)
+        if libsbmlnetworkeditor.getRole(species_reference_object) == "modifier":
+            return libsbmlnetworkeditor.getModifierSpeciesReference(self.document, reaction_id, species_id)
+        else:
+            return libsbmlnetworkeditor.getSpeciesReference(self.document, reaction_id, species_id)
 
     def extract_go_object_features(self, go_object):
         features = {'glyphObject': go_object, 'referenceId': libsbmlnetworkeditor.getSBMLObjectId(self.layout, go_object),
