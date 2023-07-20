@@ -111,14 +111,16 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
             escher_recaction[reaction['id']]['metabolites'] = metabolites
 
     def create_metabolite_from_product(self, species_reference):
-        #return
-        #metabolite = self.initialize_item(species_reference)
-        return {species_reference['species']: {}}
+        coefficient = 1
+        if species_reference['SBMLObject']:
+            coefficient = species_reference['SBMLObject'].getStoichiometry()
+        return {'bigg_id': species_reference['species'], 'coefficient': coefficient}
 
     def create_metabolite_from_substrate(self, species_reference):
-        #return
-        #metabolite = self.initialize_item(species_reference)
-        return {species_reference['species']: {}}
+        coefficient = -1
+        if species_reference['SBMLObject']:
+            coefficient = -1 * species_reference['SBMLObject'].getStoichiometry()
+        return {'bigg_id': species_reference['species'], 'coefficient': coefficient}
 
     def get_position(self, features):
         if 'boundingBox' in list(features.keys()):
