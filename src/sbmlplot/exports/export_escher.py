@@ -95,11 +95,13 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
 
 
     def extract_escher_reaction_features(self, escher_recaction, reaction):
+        escher_recaction[reaction['id']]['reversibility'] = self.get_reaction_reversibility(reaction)
         if 'features' in list(reaction.keys()):
             escher_recaction[reaction['id']]['label_x'], escher_recaction[reaction['id']]['label_y'] =\
                 self.get_position(reaction['features'])
 
         if 'speciesReferences' in list(reaction.keys()):
+            segments = []
             metabolites = []
             for species_reference in reaction['speciesReferences']:
                 if 'role' in list(species_reference.keys()):
@@ -107,8 +109,13 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                         metabolites.append(self.create_metabolite_from_product(species_reference))
                     if species_reference['role'].lower() == "reactant" or species_reference['role'].lower() == "substrate":
                         metabolites.append(self.create_metabolite_from_substrate(species_reference))
-            print(metabolites)
+            escher_recaction[reaction['id']]['segments'] = segments
             escher_recaction[reaction['id']]['metabolites'] = metabolites
+
+    def get_reaction_reversibility(self, reaction):
+        if reaction['SBMLObject']:
+            return reaction['SBMLObject'].getReversible()
+        return False
 
     def create_metabolite_from_product(self, species_reference):
         coefficient = 1
