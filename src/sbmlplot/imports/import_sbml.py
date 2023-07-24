@@ -72,10 +72,12 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def add_compartment(self, compartment_object):
         compartment = self.extract_go_object_features(compartment_object)
+        compartment['SBMLObject'] = self.get_sbml_compartment_object(compartment_object)
         self.compartments.append(compartment)
 
     def add_species(self, species_object):
         species = self.extract_go_object_features(species_object)
+        species['SBMLObject'] = self.get_sbml_species_object(species_object)
 
         # set the compartment
         s_compartment = libsbmlnetworkeditor.getCompartmentId(self.document, species_object)
@@ -89,6 +91,7 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def add_reaction(self, reaction_object):
         reaction = self.extract_go_object_features(reaction_object)
+        reaction['SBMLObject'] = self.get_sbml_reaction_object(reaction_object)
 
         # set the compartment
         r_compartment = libsbmlnetworkeditor.getCompartmentId(self.document, reaction_object)
@@ -185,6 +188,18 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                     if not style:
                         style = libsbmlnetworkeditor.getStyle(self.global_render, species_reference['glyphObject'])
                     species_reference['style'] = style
+
+    def get_sbml_compartment_object(self, compartment_object):
+        compartment_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, compartment_object)
+        libsbmlnetworkeditor.getCompartment(self.document, compartment_id)
+
+    def get_sbml_species_object(self, species_object):
+        species_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, species_object)
+        libsbmlnetworkeditor.getSpecies(self.document, species_id)
+
+    def get_sbml_reaction_object(self, reaction_object):
+        reaction_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, reaction_object)
+        libsbmlnetworkeditor.getReaction(self.document, reaction_id)
 
     def get_sbml_species_reference_object(self, species_reference_object, reaction_object):
         reaction_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, reaction_object)
