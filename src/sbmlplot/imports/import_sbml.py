@@ -195,11 +195,11 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def get_sbml_species_object(self, species_object):
         species_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, species_object)
-        libsbmlnetworkeditor.getSpecies(self.document, species_id)
+        return libsbmlnetworkeditor.getSpecies(self.document, species_id)
 
     def get_sbml_reaction_object(self, reaction_object):
         reaction_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, reaction_object)
-        libsbmlnetworkeditor.getReaction(self.document, reaction_id)
+        return libsbmlnetworkeditor.getReaction(self.document, reaction_id)
 
     def get_sbml_species_reference_object(self, species_reference_object, reaction_object):
         reaction_id = libsbmlnetworkeditor.getSBMLObjectId(self.layout, reaction_object)
