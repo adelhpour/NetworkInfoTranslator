@@ -224,10 +224,13 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def extract_text_object_features(self, text_object):
         text = {'glyphObject': text_object, 'id': libsbmlnetworkeditor.getId(text_object)}
-        if libsbmlnetworkeditor.isSetGraphicalObjectId(text_object):
+        if libsbmlnetworkeditor.isSetOriginOfTextId(text_object):
             text['graphicalObject'] = \
-                libsbmlnetworkeditor.getGraphicalObject(self.layout, libsbmlnetworkeditor.getGraphicalObjectId(text_object))
-        ## add originOfText
+                libsbmlnetworkeditor.getGraphicalObject(self.layout, libsbmlnetworkeditor.getOriginOfTextId(text_object))
+        elif libsbmlnetworkeditor.isSetGraphicalObjectId(text_object):
+            graphical_object_id = libsbmlnetworkeditor.getGraphicalObjectId(text_object)
+            text['graphicalObject'] = \
+                libsbmlnetworkeditor.getGraphicalObject(self.layout, libsbmlnetworkeditor.getSBMLObjectId(self.layout, graphical_object_id))
         return text
 
     def extract_compartment_features(self, compartment):
@@ -273,7 +276,6 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
             # get curve features
             if libsbmlnetworkeditor.isSetCurve(species_reference['glyphObject']):
                 crv = libsbmlnetworkeditor.getCurve(species_reference['glyphObject'])
-
                 if libsbmlnetworkeditor.getNumCurveSegments(crv):
                     curve_ = []
                     for e_index in range(libsbmlnetworkeditor.getNumCurveSegments(crv)):
