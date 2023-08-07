@@ -1,3 +1,4 @@
+import libsbmlnetworkeditor
 from exports.export_base import NetworkInfoExportBase
 import json
 from pathlib import Path as pathlib
@@ -29,7 +30,8 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
 
     def add_species_reference(self, reaction, species_reference):
         if 'id' in list(species_reference.keys()) and 'referenceId' in list(species_reference.keys()) \
-                and 'species' in list(species_reference.keys()) and 'features' in list(species_reference.keys()):
+                and 'species' in list(species_reference.keys()) and 'features' in list(species_reference.keys())\
+                and 'curve' in list(species_reference['features'].keys()):
             sr_index = len(species_reference['features']['curve']) - 1
             while sr_index > 0:
                 self.nodes.update(self.create_node_from_species_reference(reaction, species_reference, sr_index))
@@ -40,7 +42,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         self.set_item_biggid(node, species)
         self.set_node_is_primary(node, species)
         self.extract_node_features(node, species)
-        node[species['id']]['type'] = "metabolite"
+        node[species['id']]['node_type'] = "metabolite"
         return node
 
     def create_node_from_reaction(self, reaction):
@@ -48,7 +50,7 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
         self.set_item_biggid(node, reaction)
         self.set_node_is_primary(node, reaction)
         self.extract_node_features(node, reaction)
-        node[reaction['id']]['type'] = "midmarker"
+        node[reaction['id']]['node_type'] = "midmarker"
         return node
 
     def create_node_from_species_reference(self, reaction, species_reference, sr_index):
@@ -92,23 +94,34 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
                     if 'features' in list(text.keys()):
                         node[go['id']]['name'] = self.get_name(text['features'])
                         node[go['id']]['label_x'], node[go['id']]['label_y'] = self.get_position(text['features'])
+                        horizontal_padding = 20
+                        vertical_padding = -20
+                        node[go['id']]['label_x'] += horizontal_padding
+                        node[go['id']]['label_y'] += vertical_padding
 
 
     def extract_escher_reaction_features(self, escher_recaction, reaction):
         escher_recaction[reaction['id']]['reversibility'] = self.get_reaction_reversibility(reaction)
         if 'features' in list(reaction.keys()):
+            escher_recaction[reaction['id']]['name'] = escher_recaction[reaction['id']]['bigg_id']
             escher_recaction[reaction['id']]['label_x'], escher_recaction[reaction['id']]['label_y'] =\
                 self.get_position(reaction['features'])
+            horizontal_padding = 0
+            vertical_padding = -20
+            escher_recaction[reaction['id']]['label_x'] += horizontal_padding
+            escher_recaction[reaction['id']]['label_y'] += vertical_padding
+
 
         if 'speciesReferences' in list(reaction.keys()):
-            segments = []
+            segments = {}
             metabolites = []
             for species_reference in reaction['speciesReferences']:
                 if 'role' in list(species_reference.keys()):
                     if species_reference['role'].lower() == "product":
                         metabolites.append(self.create_metabolite_from_product(species_reference))
-                    if species_reference['role'].lower() == "reactant" or species_reference['role'].lower() == "substrate":
+                    elif species_reference['role'].lower() == "reactant" or species_reference['role'].lower() == "substrate":
                         metabolites.append(self.create_metabolite_from_substrate(species_reference))
+                segments.update(self.create_segments(species_reference, reaction))
             escher_recaction[reaction['id']]['segments'] = segments
             escher_recaction[reaction['id']]['metabolites'] = metabolites
 
@@ -129,11 +142,28 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
             coefficient = -1 * species_reference['SBMLObject'].getStoichiometry()
         return {'bigg_id': species_reference['species'], 'coefficient': coefficient}
 
+    def create_segments(self, species_reference, reaction):
+        segments = {}
+        segment_id = species_reference['id'] + ".S" + "0"
+        segment_features = {}
+        if 'curve' in list(species_reference['features'].keys()):
+            segment_features['from_node_id'] = reaction['id']
+            for cs_index in range(libsbmlnetworkeditor.getNumCurveSegments(species_reference['glyphObject']) - 1):
+                segment_features['to_node_id'] = reaction['id'] + "." + species_reference['id'] + ".M" + str(cs_index + 1)
+                segment_features.update(self.get_segment_base_point_features(species_reference['features']['curve'], cs_index))
+                segments.update({segment_id: segment_features})
+                segment_id = species_reference['id'] + ".S" + str(cs_index + 1)
+                segment_features['from_node_id'] = reaction['id'] + "." + species_reference['id'] + ".M" + str(cs_index + 1)
+            segment_features.update(self.get_segment_base_point_features(species_reference['features']['curve'], -1))
+            segment_features['to_node_id'] = libsbmlnetworkeditor.getSpeciesGlyphId(species_reference['glyphObject'])
+        segments.update({segment_id: segment_features})
+        return segments
+
     def get_position(self, features):
         if 'boundingBox' in list(features.keys()):
             return self.get_bb_center_x(features['boundingBox']), self.get_bb_center_y(features['boundingBox'])
         elif 'curve' in list(go['features'].keys()):
-            return self.get_curve_center_x(features['curve']), self.get_curve_center_y(features['curve'])
+            return [self.get_curve_center_x(features['curve']), self.get_curve_center_y(features['curve'])]
         return 0.0, 0.0
 
     @staticmethod
@@ -162,14 +192,27 @@ class NetworkInfoExportToEscher(NetworkInfoExportBase):
             return features['plainText']
         return ""
 
+    @staticmethod
+    def get_segment_base_point_features(curve, cs_index):
+        if 'basePoint1X' in list(curve[cs_index].keys()) and 'basePoint2X' in list(curve[cs_index].keys()):
+            return {'b1': {'x': curve[cs_index]['basePoint1X'], 'y': curve[cs_index]['basePoint1Y']},
+                    'b2': {'x': curve[cs_index]['basePoint2X'], 'y': curve[cs_index]['basePoint2Y']}}
+        else:
+            return {'b1': {'x': curve[cs_index]['startX'], 'y': curve[cs_index]['startY']},
+                    'b2': {'x': curve[cs_index]['endX'], 'y': curve[cs_index]['endY']}}
+
     def export(self, file_name="file"):
-        position_x = self.graph_info.extents['minX'] + 0.5 * (self.graph_info.extents['maxX'] - self.graph_info.extents['minX'])
-        position_y = self.graph_info.extents['minY'] + 0.5 * (self.graph_info.extents['maxY'] - self.graph_info.extents['minY'])
-        dimensions_width = self.graph_info.extents['maxY'] - self.graph_info.extents['minY']
-        dimensions_height = self.graph_info.extents['maxY'] - self.graph_info.extents['minY']
-        graph_info = [{'generated_by': "SBMLplot",
-                      'name': pathlib(file_name).stem + "_graph",
-                      'canvas': {'x': position_x, 'y': position_y, 'width': dimensions_width, 'height': dimensions_height},
+        horizontal_margin = 75
+        vertical_margin = 75
+        position_x = self.graph_info.extents['minX'] - horizontal_margin
+        position_y = self.graph_info.extents['minY'] - vertical_margin
+        dimensions_width = self.graph_info.extents['maxX'] - self.graph_info.extents['minX'] + 2 * horizontal_margin
+        dimensions_height = self.graph_info.extents['maxY'] - self.graph_info.extents['minY'] + 2 * vertical_margin
+        graph_info = [{'map_name': pathlib(file_name).stem + "_graph",
+                       'map_id': "",
+                       'map_description': "",
+                       'homepage': ""},
+                      {'canvas': {'x': position_x, 'y': position_y, 'width': dimensions_width, 'height': dimensions_height},
                       'nodes': self.nodes,
                       'reactions': self.reactions}]
         with open(file_name.split('.')[0] + ".json", 'w', encoding='utf8') as js_file:
