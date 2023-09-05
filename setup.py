@@ -24,7 +24,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    scripts=["testcases/test1.py"],
+    scripts=["src/sbmlplot/test.py"],
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     install_requires=open('requirements.txt').readlines(),
