@@ -1,5 +1,4 @@
 libsbne
-matplotlib>=3.4.0
 numpy
 libsbml
 webcolors
