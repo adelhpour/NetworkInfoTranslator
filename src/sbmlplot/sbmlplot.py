@@ -17,6 +17,7 @@ class SBMLGraphInfoImportBase:
         self.gradients = []
         self.line_endings = []
         self.extents = {}
+        self.background_color = ""
 
     def reset_info(self):
         self.compartments.clear()
@@ -26,6 +27,7 @@ class SBMLGraphInfoImportBase:
         self.gradients.clear()
         self.line_endings.clear()
         self.extents = {'minX': 0, 'maxX': 0, 'minY': 0, 'maxY': 0}
+        self.background_color = "white"
 
     def find_compartment(self, compartment_reference_id):
         for compartment in self.compartments:
@@ -184,6 +186,10 @@ class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
 
     def extract_render_package_info(self, veneer):
         if sbne.ne_ven_isRenderSpecified(veneer):
+            # get background color
+            if sbne.ne_ven_isSetBackgroundColor:
+                self.background_color = sbne.ne_ven_getBackgroundColor(veneer)
+
             # get colors info
             for c_index in range(sbne.ne_ven_getNumColors(veneer)):
                 self.add_color(sbne.ne_ven_getColor(veneer, c_index))
@@ -1058,6 +1064,8 @@ class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
         self.extract_entities(graph_info)
 
     def extract_extents(self, graph_info):
+        if 'background-color' in list(graph_info.keys()):
+            self.background_color = graph_info['background-color']
         if 'position' in list(graph_info.keys()):
             if 'x' in list(graph_info['position'].keys()):
                 self.extents['minX'] = graph_info['position']['x']
@@ -1545,6 +1553,7 @@ class SBMLGraphInfoExportToSBMLModel(SBMLGraphInfoExportBase):
         self.create_model()
         super().extract_graph_info(graph_info)
         self.set_layout_dimensions()
+        self.set_render_background_color()
 
         for color in self.graph_info.colors:
             self.add_color(color)
@@ -1559,6 +1568,9 @@ class SBMLGraphInfoExportToSBMLModel(SBMLGraphInfoExportBase):
         self.layout.setDimensions(libsbml.Dimensions(self.layoutns,
                                                      self.graph_info.extents['maxX'] - self.graph_info.extents['minX'],
                                                      self.graph_info.extents['maxY'] - self.graph_info.extents['minY']))
+
+    def set_render_background_color(self):
+        self.global_render.setBackgroundColor(self.graph_info.background_color)
 
     @staticmethod
     def check(value, message):
@@ -2786,6 +2798,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
                       'height': self.graph_info.extents['maxY'] - self.graph_info.extents['minY']}
         graph_info = {'generated_by': "SBMLplot",
                       'name': pathlib(file_name).stem + "_graph",
+                      'background-color': self.graph_info.background_color,
                       'position': position,
                       'dimensions': dimensions,
                       'nodes': self.nodes,
