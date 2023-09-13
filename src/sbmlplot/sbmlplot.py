@@ -1160,7 +1160,10 @@ class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
     def extract_reaction_features(self, reaction):
         if 'parent' in list(reaction['info'].keys()):
             reaction['compartment'] = reaction['info']['parent']
-        self.extract_node_features(reaction)
+        if self.is_centroid_node(reaction):
+            self.extract_centroid_node_features(reaction)
+        else:
+            self.extract_node_features(reaction)
 
     def extract_species_reference_features(self, species_reference):
         if 'style' in list(species_reference['info'].keys()) and\
@@ -1219,6 +1222,43 @@ class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
         if 'texts' in list(node.keys()):
             self.extract_text_features(node)
 
+    def extract_centroid_node_features(self, centroid_node):
+        centroid_node['features'] = {'graphicalCurve': {}, 'curve': []}
+        centroid_node['texts'] = []
+
+        # get curve features
+        bounding_box = self.get_bounding_box_features(centroid_node['info'])
+        centroid_node['features']['curve'] = [{'startX': bounding_box['x'] + 0.5 * bounding_box['width'],
+                       'startY': bounding_box['y'] + 0.5 * bounding_box['height'],
+                       'endX': bounding_box['x'] + 0.5 * bounding_box['width'],
+                       'endY': bounding_box['y'] + 0.5 * bounding_box['height']}]
+
+        # get style features
+        if 'style' in list(centroid_node['info'].keys()):
+            if 'name' in list(centroid_node['info']['style']):
+                centroid_node['features']['styleName'] = centroid_node['info']['style']['name']
+            centroid_shape = centroid_node['info']['style']['shapes'][0]
+            # get stroke color
+            if 'border-color' in list(centroid_shape.keys()):
+                centroid_node['features']['graphicalCurve']['strokeColor'] = centroid_shape['border-color']
+            # get stroke width
+            if 'border-width' in list(centroid_shape.keys()):
+                centroid_node['features']['graphicalCurve']['strokeWidth'] = centroid_shape['border-width']
+            # get fill color
+            if 'fill-color' in list(centroid_shape.keys()):
+                centroid_node['features']['graphicalCurve']['fillColor'] = centroid_shape['fill-color']
+
+    @staticmethod
+    def is_centroid_node(node):
+        if 'style' in list(node['info'].keys()) \
+                and 'shapes' in list(node['info']['style'].keys()) \
+                and len(node['info']['style']['shapes']) == 1 \
+                and 'shape' in list(node['info']['style']['shapes'][0].keys()) \
+                and node['info']['style']['shapes'][0]['shape'] == "centroid":
+            return True
+
+        return False
+
     def extract_edge_features(self, edge):
         edge['features'] = {}
         if 'source' in list(edge['info'].keys()):
@@ -1272,8 +1312,6 @@ class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
                             'end': edge['info']['style']['arrow-head']['name']}
                     self.add_line_ending(edge['info']['style']['arrow-head'])
 
-
-
     def extract_graphical_shape_features(self, shapes, offset_x=0, offset_y=0):
         graphical_shape_info = {'geometricShapes': []}
 
@@ -1298,7 +1336,9 @@ class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
 
     def extract_curve_features(self, shape, curve):
         curve_info = {}
-        if 'shape' in list(shape.keys()) and shape['shape'].lower() == "line":
+        if 'shape' in list(shape.keys()) and (shape['shape'].lower() == "line" or \
+                                              shape['shape'].lower() == "connected-to-source-centroid-shape-line" or \
+                                              shape['shape'].lower() == "connected-to-target-centroid-shape-line"):
             # get stroke color
             if 'border-color' in list(shape.keys()):
                 curve_info['strokeColor'] = shape['border-color']
@@ -1389,7 +1429,6 @@ class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
 
             # get group features
             text['features']['graphicalText'] = graphical_text_info
-
 
     def extract_geometric_shape_exclusive_features(self, shape, offset_x=0, offset_y=0):
         if shape['shape'].lower() == "rectangle":
@@ -2246,7 +2285,6 @@ class SBMLGraphInfoExportToJsonBase(SBMLGraphInfoExportBase):
     def add_edge(self, species_reference, reaction):
         pass
 
-
 class SBMLGraphInfoExportToCytoscapeJs(SBMLGraphInfoExportToJsonBase):
     def __init__(self):
         self.styles = []
@@ -2500,7 +2538,6 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
 
     def set_entity_compartment(self, item, go):
         if 'compartment' in list(go.keys()):
-
             for c in self.graph_info.compartments:
                 if c['referenceId'] == go['compartment']:
                     item['parent'] = c['id']
@@ -2509,15 +2546,38 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
     @staticmethod
     def initialize_node_style(go, category):
         parent_category = ""
+        convertible_parent_category = ""
+        parent_title = ""
+        parent_categories = []
         if category == "Compartment":
             parent_category = "Compartment"
-        return {'name': go['id'] + "_style", 'category': category,
-                'parent-category': parent_category, 'shapes': []}
+            convertible_parent_category = "Compartment"
+        else:
+            parent_categories = ["Compartment"]
+            parent_title = "Compartment"
+        return {'name': go['referenceId'] + "_style", 'category': category, 'sub-category': "",
+                'convertible-parent-category': convertible_parent_category, 'parent-category': parent_category,
+                'parent-categories': parent_categories, 'parent-title': parent_title,
+                'is-name-editable': True, 'name-title': "Id",
+                'shapes': []}
 
     @staticmethod
     def initialize_edge_style(species_reference):
-        return {'name': species_reference['id'] + "_style", 'category': "SpeciesReference",
-                'sub-category': species_reference['role'], 'shapes': []}
+        connectable_source_node_title = "Species"
+        connectable_source_node_categories = ["Species"]
+        connectable_target_node_title = "Reaction"
+        connectable_target_node_categories = ["Reaction"]
+        if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "side product":
+            connectable_source_node_title = "Reaction"
+            connectable_source_node_categories = ["Reaction"]
+            connectable_target_node_title = "Species"
+            connectable_target_node_categories = ["Species"]
+
+        return {'name': species_reference['referenceId'] + "_style", 'category': "SpeciesReference",
+                'sub-category': species_reference['role'],
+                'connectable-source-node-title': connectable_source_node_title, 'connectable-source-node-categories': connectable_source_node_categories,
+                'connectable-target-node-title': connectable_target_node_title, 'connectable-target-node-categories': connectable_target_node_categories,
+                'name-title': "Id", 'is-name-editable': True, 'shapes': []}
 
     def set_edge_nodes(self, edge, species_reference, reaction):
         species = {}
@@ -2538,8 +2598,11 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
                 node['dimensions'] = self.get_node_dimensions(go)
             if 'graphicalShape' in list(go['features'].keys())\
                     and 'geometricShapes' in list(go['features']['graphicalShape'].keys()):
-                style['shapes'] = self.get_shape_style(go, offset_x=-0.5 * go['features']['boundingBox']['width'],
-                                     offset_y=-0.5 * go['features']['boundingBox']['height'])
+                if len(go['features']['graphicalShape']['geometricShapes']):
+                    style['shapes'] = self.get_shape_style(go, offset_x=-0.5 * go['features']['boundingBox']['width'],
+                                                           offset_y=-0.5 * go['features']['boundingBox']['height'])
+                elif 'curve' in list(go['features'].keys()):
+                    style['shapes'] = self.get_centroid_shape_style(go)
             if 'texts' in list(go.keys()):
                 for text in go['texts']:
                     if 'features' in list(text.keys()):
@@ -2547,11 +2610,20 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
 
     def extract_edge_features(self, go, style):
         if 'features' in list(go.keys()) and 'graphicalCurve' in list(go['features'].keys()):
-            style['shapes'].append(self.get_curve_style(go))
+            curve_style = self.get_curve_style(go)
+            curve_style["shape"] = self.get_curve_style_shape_type(style)
+            style['shapes'].append(curve_style)
             if 'heads' in list(go['features']['graphicalCurve'].keys()) \
                     and 'end' in list(go['features']['graphicalCurve']['heads'].keys()):
                 style['arrow-head'] =\
                     self.get_arrow_heads(go['features']['graphicalCurve']['heads'], style['name'])
+
+    @staticmethod
+    def get_curve_style_shape_type(style):
+        if style['connectable-source-node-title'] == "Reaction":
+            return "connected-to-source-centroid-shape-line"
+        else:
+            return "connected-to-target-centroid-shape-line"
 
     @staticmethod
     def get_node_position(go):
@@ -2605,6 +2677,17 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
                 geometric_shapes.append(geometric_shape)
         return geometric_shapes
 
+    @staticmethod
+    def get_centroid_shape_style(go):
+        geometric_shape = {'shape': "centroid"}
+        if 'strokeColor' in list(go['features']['graphicalShape'].keys()):
+            geometric_shape['border-color'] = go['features']['graphicalShape']['strokeColor']
+        if 'strokeWidth' in list(go['features']['graphicalShape'].keys()):
+            geometric_shape['border-width'] = go['features']['graphicalShape']['strokeWidth']
+        if 'fillColor' in list(go['features']['graphicalShape'].keys()):
+            geometric_shape['fill-color'] = go['features']['graphicalShape']['fillColor']
+        return [geometric_shape]
+
     def get_curve_style(self, go):
         geometric_shape = {}
         if 'strokeColor' in list(go['features']['graphicalCurve'].keys()):
@@ -2617,6 +2700,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
         geometric_shape.update(self.get_curve_style_features(go['features']['graphicalCurve']))
         if len(go['features']['curve']):
             geometric_shape.update(self.get_curve_features(go['features']['curve']))
+
         return geometric_shape
 
     def get_geometric_shape_features(self, gs, dimensions, offset_x, offset_y):
@@ -2655,7 +2739,6 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
         element = curve[0]
         if all(k in element.keys() for k in ('startX', 'startY', 'endX', 'endY',
                                              'basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
-            curve_shape['shape'] = "bezier"
             curve_shape['p1'] = {'x': 0, 'y': 0}
             if abs(element['endX'] - element['startX']) > 0:
                 curve_shape['p1']['x'] = \
@@ -2674,8 +2757,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
                 curve_shape['p2']['y'] = \
                     round(
                         (element['basePoint2Y'] - element['endY']) / (0.01 * (element['endY'] - element['startY'])))
-        else:
-            curve_shape['shape'] = "line"
+
         return curve_shape
 
     @staticmethod
@@ -2812,7 +2894,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
 
 """
 sbml_graph_info = SBMLGraphInfoImportFromNetworkEditor()
-f = open("/Users/home/Downloads/Graph.json")
+f = open("/Users/home/Downloads/network1.json")
 sbml_graph_info.extract_info(json.load(f))
 sbml_export = SBMLGraphInfoExportToSBMLModel()
 sbml_export.extract_graph_info(sbml_graph_info)
