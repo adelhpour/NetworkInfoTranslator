@@ -1726,11 +1726,14 @@ class SBMLGraphInfoExportToSBMLModel(SBMLGraphInfoExportBase):
                 'role' in list(species_reference.keys()) and \
                 'species' in list(species_reference.keys()):
             sr = None
-            if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "reactant":
+            if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "sidesubstrate"\
+                    or species_reference['role'].lower() == "side substrate"\
+                    or species_reference['role'].lower() == "reactant":
                 sr = reaction.createReactant()
                 self.check(sr.setConstant(True),
                            'set species_reference ' + species_reference['referenceId'] + ' "constant" attribute')
-            elif species_reference['role'].lower() == "product":
+            elif species_reference['role'].lower() == "product" or species_reference['role'].lower() == "sideproduct"\
+                    or species_reference['role'].lower() == "side product":
                 sr = reaction.createProduct()
                 self.check(sr.setConstant(True),
                            'set species_reference ' + species_reference['referenceId'] + ' "constant" attribute')
@@ -1795,8 +1798,13 @@ class SBMLGraphInfoExportToSBMLModel(SBMLGraphInfoExportBase):
             species_reference_glyph.setSpeciesReferenceId(species_reference['referenceId'])
             if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "reactant":
                 species_reference_glyph.setRole(libsbml.SPECIES_ROLE_SUBSTRATE)
+            elif species_reference['role'].lower() == "sidesubstrate" or species_reference['role'].lower() == "side substrate"\
+                or species_reference['role'].lower() == "sidereactant" or species_reference['role'].lower() == "side reactant":
+                species_reference_glyph.setRole(libsbml.SPECIES_ROLE_SIDESUBSTRATE)
             elif species_reference['role'].lower() == "product":
                 species_reference_glyph.setRole(libsbml.SPECIES_ROLE_PRODUCT)
+            elif species_reference['role'].lower() == "sideproduct" or species_reference['role'].lower() == "side product":
+                species_reference_glyph.setRole(libsbml.SPECIES_ROLE_SIDEPRODUCT)
             self.set_glyph_curve(species_reference, species_reference_glyph)
             self.add_local_style(species_reference)
 
@@ -2366,7 +2374,7 @@ class SBMLGraphInfoExportToCytoscapeJs(SBMLGraphInfoExportToJsonBase):
                 species = s
                 break
         if species and 'role' in list(species_reference.keys()):
-            if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "side product":
+            if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "sideproduct" or species_reference['role'].lower() == "side product":
                 edge['data']['source'] = reaction['id']
                 edge['data']['target'] = species['id']
             else:
@@ -2572,7 +2580,6 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
             connectable_source_node_categories = ["Reaction"]
             connectable_target_node_title = "Species"
             connectable_target_node_categories = ["Species"]
-
         return {'name': species_reference['referenceId'] + "_style", 'category': "SpeciesReference",
                 'sub-category': species_reference['role'],
                 'connectable-source-node-title': connectable_source_node_title, 'connectable-source-node-categories': connectable_source_node_categories,
@@ -2582,7 +2589,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
     def set_edge_nodes(self, edge, species_reference, reaction):
         species = {}
         for s in self.graph_info.species:
-            if s['referenceId'] == species_reference['species']:
+            if s['referenceId'] == species_reference['species'] and s['id'] == species_reference['speciesGlyph']:
                 species = s
                 break
         if 'role' in list(species_reference.keys()):
@@ -2736,28 +2743,31 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
     @staticmethod
     def get_curve_features(curve):
         curve_shape = {}
-        element = curve[0]
-        if all(k in element.keys() for k in ('startX', 'startY', 'endX', 'endY',
+        start_element = curve[0]
+        end_element = curve[len(curve) - 1]
+        curve_shape['p1'] = {'x': 0, 'y': 0}
+        curve_shape['p2'] = {'x': 0, 'y': 0}
+        if all(k in start_element.keys() for k in ('startX', 'startY', 'endX', 'endY',
                                              'basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
-            curve_shape['p1'] = {'x': 0, 'y': 0}
-            if abs(element['endX'] - element['startX']) > 0:
+            if abs(end_element['endX'] - start_element['startX']) > 0:
                 curve_shape['p1']['x'] = \
-                    round((element['basePoint1X'] - element['startX']) / (
-                            0.01 * (element['endX'] - element['startX'])))
-            if abs(element['endY'] - element['startY']) > 0:
+                    round((start_element['basePoint1X'] - start_element['startX']) / (
+                            0.01 * (end_element['endX'] - start_element['startX'])))
+            if abs(end_element['endY'] - start_element['startY']) > 0:
                 curve_shape['p1']['y'] = \
-                    round((element['basePoint1Y'] - element['startY']) / (
-                            0.01 * (element['endY'] - element['startY'])))
-            curve_shape['p2'] = {'x': 0, 'y': 0}
-            if abs(element['endX'] - element['startX']) > 0:
+                    round((start_element['basePoint1Y'] - start_element['startY']) / (
+                            0.01 * (end_element['endY'] - start_element['startY'])))
+        if all(k in end_element.keys() for k in ('startX', 'startY', 'endX', 'endY',
+                                                          'basePoint1X', 'basePoint1Y', 'basePoint2X',
+                                                          'basePoint2Y')):
+            if abs(end_element['endX'] - start_element['startX']) > 0:
                 curve_shape['p2']['x'] = \
                     round(
-                        (element['basePoint2X'] - element['endX']) / (0.01 * (element['endX'] - element['startX'])))
-            if abs(element['endY'] - element['startY']) > 0:
+                        (end_element['basePoint2X'] - end_element['endX']) / (0.01 * (end_element['endX'] - start_element['startX'])))
+            if abs(end_element['endY'] - start_element['startY']) > 0:
                 curve_shape['p2']['y'] = \
                     round(
-                        (element['basePoint2Y'] - element['endY']) / (0.01 * (element['endY'] - element['startY'])))
-
+                        (end_element['basePoint2Y'] - end_element['endY']) / (0.01 * (end_element['endY'] - start_element['startY'])))
         return curve_shape
 
     @staticmethod
