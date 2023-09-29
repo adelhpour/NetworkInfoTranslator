@@ -57,7 +57,7 @@ class SBMLGraphInfoImportBase:
 
         return None
 
-    def find_color_value(self, color_id, search_among_gradients=True):
+    def find_color_value(self, color_id, search_among_gradients=False):
         # search among the gradients
         if search_among_gradients:
             for gradient in self.gradients:
@@ -70,14 +70,15 @@ class SBMLGraphInfoImportBase:
                                                  stop['color'])))
                     if len(stop_colors):
                         return mcolors.to_hex(np.average(np.array(stop_colors), axis=0).tolist())
-
         # search among the colors
         for color in self.colors:
             if color_id == color['id'] and \
                     'value' in list(color['features'].keys()):
                 return color['features']['value']
-
-        return color_id
+        if color_id.startswith("#"):
+            return color_id
+        else:
+            return "#ffffff"
 
     def find_color_unique_id(self):
         color_id = "color"
@@ -486,9 +487,14 @@ class SBMLGraphInfoImportFromSBMLModel(SBMLGraphInfoImportBase):
             text_features['plainText'] = sbne.ne_gtxt_getPlainText(text['glyphObject'])
         elif 'graphicalObject' in list(text.keys()):
             if sbne.ne_ne_isSetName(text['graphicalObject']):
-                text_features['plainText'] = sbne.ne_ne_getName(text['graphicalObject'])
-            else:
-                text_features['plainText'] = sbne.ne_ne_getId(text['graphicalObject'])
+                text_features['text-name'] = sbne.ne_ne_getName(text['graphicalObject'])
+            if sbne.ne_ne_isSetId(text['graphicalObject']):
+                text_features['text-id'] = sbne.ne_ne_getId(text['graphicalObject'])
+        if 'plainText' not in list(text_features.keys()):
+            if 'text-name' in list(text_features.keys()):
+                text_features['plainText'] = text_features['text-name']
+            elif 'text-id' in list(text_features.keys()):
+                text_features['plainText'] = text_features['text-id']
         # get bounding box features of the text glyph
         if sbne.ne_go_isSetBoundingBox(text['glyphObject']):
             text_features['boundingBox'] = self.extract_bounding_box_features(text['glyphObject'])
@@ -1379,9 +1385,9 @@ class SBMLGraphInfoImportFromNetworkEditor(SBMLGraphInfoImportBase):
             graphical_text_info = {}
             if 'shape' in list(text['info'].keys()) and text['info']['shape'].lower() == "text":
                 # get stroke color
-                if 'color' in list(text['info'].keys()):
-                    graphical_text_info['strokeColor'] = text['info']['color']
-                    self.add_color(text['info']['color'])
+                if 'text-color' in list(text['info'].keys()):
+                    graphical_text_info['strokeColor'] = text['info']['text-color']
+                    self.add_color(text['info']['text-color'])
 
                 # get position x
                 if 'x' in list(text['info'].keys()):
@@ -2460,7 +2466,7 @@ class SBMLGraphInfoExportToCytoscapeJs(SBMLGraphInfoExportToJsonBase):
     def set_node_text_style(self, text):
         text_style = {}
         if 'strokeColor' in list(text['features']['graphicalText'].keys()):
-            text_style['color'] = \
+            text_style['text-color'] = \
                 self.graph_info.find_color_value(text['features']['graphicalText']['strokeColor'])
         if 'fontFamily' in list(text['features']['graphicalText'].keys()):
             text_style['font-family'] = text['features']['graphicalText']['fontFamily']
@@ -2705,7 +2711,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
         if 'strokeWidth' in list(go['features']['graphicalCurve'].keys()):
             geometric_shape['border-width'] = go['features']['graphicalCurve']['strokeWidth']
         geometric_shape.update(self.get_curve_style_features(go['features']['graphicalCurve']))
-        if len(go['features']['curve']):
+        if 'curve' in list(go['features'].keys()) and len(go['features']['curve']):
             geometric_shape.update(self.get_curve_features(go['features']['curve']))
 
         return geometric_shape
@@ -2843,6 +2849,11 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
         text_shape = {'shape': "text"}
         if 'plainText' in list(text['features'].keys()):
             text_shape['plain-text'] = text['features']['plainText']
+        text_shape['plain-text-alternatives'] = []
+        if 'text-name' in list(text['features'].keys()) and text['features']['text-name'] != text_shape['plain-text']:
+            text_shape['plain-text-alternatives'].append(text['features']['text-name'])
+        if 'text-id' in list(text['features'].keys()) and text['features']['text-id'] != text_shape['plain-text']:
+            text_shape['plain-text-alternatives'].append(text['features']['text-id'])
         if 'graphicalText' in list(text['features'].keys()):
             text_shape.update(self.get_text_features(text, go_bounding_box))
         return text_shape
@@ -2850,7 +2861,7 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
     def get_text_features(self, text, go_bounding_box):
         features = {}
         if 'strokeColor' in list(text['features']['graphicalText'].keys()):
-            features['color'] = \
+            features['text-color'] = \
                 self.graph_info.find_color_value(text['features']['graphicalText']['strokeColor'])
         if 'fontFamily' in list(text['features']['graphicalText'].keys()):
             features['font-family'] = text['features']['graphicalText']['fontFamily']
