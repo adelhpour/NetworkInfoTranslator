@@ -2606,16 +2606,16 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
 
     def extract_node_features(self, go, node, style):
         if 'features' in list(go.keys()):
-            if 'boundingBox' in list(go['features'].keys()):
-                node['position'] = self.get_node_position(go)
-                node['dimensions'] = self.get_node_dimensions(go)
-            if 'graphicalShape' in list(go['features'].keys())\
+            node['position'] = self.get_node_position(go)
+            node['dimensions'] = self.get_node_dimensions(go)
+            if 'curve' in list(go['features'].keys()):
+                style['shapes'] = self.get_centroid_shape_style(go)
+                print(style['shapes'])
+            elif 'graphicalShape' in list(go['features'].keys())\
                     and 'geometricShapes' in list(go['features']['graphicalShape'].keys()):
                 if len(go['features']['graphicalShape']['geometricShapes']):
                     style['shapes'] = self.get_shape_style(go, offset_x=-0.5 * go['features']['boundingBox']['width'],
                                                            offset_y=-0.5 * go['features']['boundingBox']['height'])
-                elif 'curve' in list(go['features'].keys()):
-                    style['shapes'] = self.get_centroid_shape_style(go)
             if 'texts' in list(go.keys()):
                 for text in go['texts']:
                     if 'features' in list(text.keys()):
@@ -2640,15 +2640,27 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
 
     @staticmethod
     def get_node_position(go):
-        return {'x': go['features']['boundingBox']['x']
-                     + 0.5 * go['features']['boundingBox']['width'],
-                'y': go['features']['boundingBox']['y']
-                     + 0.5 * go['features']['boundingBox']['height']}
+        if 'features' in list(go.keys()):
+            if 'curve' in list(go['features'].keys()):
+                if len(go['features']['curve']):
+                    return {'x': 0.5 * (go['features']['curve'][0]['startX'] + go['features']['curve'][-1]['endX']),
+                            'y': 0.5 * (go['features']['curve'][0]['startY'] + go['features']['curve'][-1]['endY'])}
+            elif 'boundingBox' in list(go['features'].keys()):
+                return {'x': go['features']['boundingBox']['x']
+                             + 0.5 * go['features']['boundingBox']['width'],
+                        'y': go['features']['boundingBox']['y']
+                             + 0.5 * go['features']['boundingBox']['height']}
+
+        return {'x': 0.0, 'y': 0.0}
 
     @staticmethod
     def get_node_dimensions(go):
-        return {'width': go['features']['boundingBox']['width'],
-                'height': go['features']['boundingBox']['height']}
+        if 'features' in list(go.keys()):
+            if 'curve' in list(go['features'].keys()):
+                return {'width': 0.2, 'height': 0.2}
+            elif 'boundingBox' in list(go['features'].keys()):
+                return {'width': go['features']['boundingBox']['width'],
+                        'height': go['features']['boundingBox']['height']}
 
     def get_edge_nodes_features(self, start_go, end_go):
         start_node_features = {'node': start_go['id']}
@@ -2693,12 +2705,18 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
     @staticmethod
     def get_centroid_shape_style(go):
         geometric_shape = {'shape': "centroid"}
-        if 'strokeColor' in list(go['features']['graphicalShape'].keys()):
-            geometric_shape['border-color'] = go['features']['graphicalShape']['strokeColor']
-        if 'strokeWidth' in list(go['features']['graphicalShape'].keys()):
-            geometric_shape['border-width'] = go['features']['graphicalShape']['strokeWidth']
-        if 'fillColor' in list(go['features']['graphicalShape'].keys()):
-            geometric_shape['fill-color'] = go['features']['graphicalShape']['fillColor']
+        graphical_features = {}
+        if 'graphicalCurve' in list(go['features'].keys()):
+            graphical_features = go['features']['graphicalCurve']
+        elif 'graphicalShape' in list(go['features'].keys()):
+            graphical_features = go['features']['graphicalShape']
+        if 'strokeColor' in list(graphical_features.keys()):
+            geometric_shape['border-color'] = graphical_features['strokeColor']
+        if 'strokeWidth' in list(graphical_features.keys()):
+            geometric_shape['border-width'] = graphical_features['strokeWidth']
+        if 'fillColor' in list(graphical_features.keys()):
+            geometric_shape['fill-color'] = graphical_features['fillColor']
+
         return [geometric_shape]
 
     def get_curve_style(self, go):
