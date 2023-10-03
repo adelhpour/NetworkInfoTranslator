@@ -2610,7 +2610,6 @@ class SBMLGraphInfoExportToNetworkEditor(SBMLGraphInfoExportToJsonBase):
             node['dimensions'] = self.get_node_dimensions(go)
             if 'curve' in list(go['features'].keys()):
                 style['shapes'] = self.get_centroid_shape_style(go)
-                print(style['shapes'])
             elif 'graphicalShape' in list(go['features'].keys())\
                     and 'geometricShapes' in list(go['features']['graphicalShape'].keys()):
                 if len(go['features']['graphicalShape']['geometricShapes']):
