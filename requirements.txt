@@ -1,4 +1,4 @@
 libsbne
 numpy
-libsbml
+python-libsbml
 webcolors
