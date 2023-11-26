@@ -256,9 +256,9 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                                     'endY': libsbmlnetworkeditor.getCurveSegmentEndPointY(crv, e_index)}
                         if libsbmlnetworkeditor.isCubicBezier(crv, e_index):
                             element_["basePoint1X"] = libsbmlnetworkeditor.getCurveSegmentBasePoint1X(crv, e_index)
-                            element_["basePoint1Y"] = libsbmlnetworkeditor.getCurveSegmentBasePoint1Y(base_point1)
-                            element_["basePoint2X"] = libsbmlnetworkeditor.getCurveSegmentBasePoint2X(base_point2)
-                            element_["basePoint2Y"] = libsbmlnetworkeditor.getCurveSegmentBasePoint2Y(base_point2)
+                            element_["basePoint1Y"] = libsbmlnetworkeditor.getCurveSegmentBasePoint1Y(crv, e_index)
+                            element_["basePoint2X"] = libsbmlnetworkeditor.getCurveSegmentBasePoint2X(crv, e_index)
+                            element_["basePoint2Y"] = libsbmlnetworkeditor.getCurveSegmentBasePoint2Y(crv, e_index)
                         curve_.append(element_)
                     reaction['features']['curve'] = curve_
 
