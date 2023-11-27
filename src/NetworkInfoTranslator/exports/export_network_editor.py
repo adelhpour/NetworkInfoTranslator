@@ -339,7 +339,7 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                     'y': self.graph_info.extents['minY'] + 0.5 * (self.graph_info.extents['maxY'] - self.graph_info.extents['minY'])}
         dimensions = {'width': self.graph_info.extents['maxX'] - self.graph_info.extents['minX'],
                       'height': self.graph_info.extents['maxY'] - self.graph_info.extents['minY']}
-        graph_info = {'generated_by': "SBMLplot",
+        graph_info = {'generated_by': "NetworkInfoTranslator",
                       'name': pathlib(file_name).stem + "_graph",
                       'position': position,
                       'dimensions': dimensions,

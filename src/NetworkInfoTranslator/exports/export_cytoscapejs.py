@@ -210,7 +210,7 @@ class NetworkInfoExportToCytoscapeJs(NetworkInfoExportToJsonBase):
         return ""
 
     def export(self, file_name):
-        graph_info = dict(data={'generated_by': "SBMLplot", 'name': pathlib(file_name).stem,
+        graph_info = dict(data={'generated_by': "NetworkInfoTranslator", 'name': pathlib(file_name).stem,
                                 'shared_name': pathlib(file_name).stem, 'selected': True})
         graph_info['elements'] = {'nodes': self.nodes, 'edges': self.edges}
         graph_info['style'] = self.styles

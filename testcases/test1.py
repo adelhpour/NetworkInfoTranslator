@@ -1,6 +1,6 @@
-import sbmlplot
+import networkinfotranslator
 
-sbml_graph_info_from_sbml_model = sbmlplot.SBMLGraphInfoImportFromSBMLModel()
+sbml_graph_info_from_sbml_model = networkinfotranslator.NetworkInfoImportFromSBMLModel()
 sbml_graph_info_from_sbml_model.extract_info("exampleSBMLModelFile.xml")
 
 """
@@ -15,7 +15,7 @@ the directory where the SBML model file is located
 
 """
 
-sbml_graph_info_from_network_editor = sbmlplot.SBMLGraphInfoImportFromNetworkEditor()
+sbml_graph_info_from_network_editor = networkinfotranslator.NetworkInfoImportFromNetworkEditor()
 f = open("exampleJsonFile.json")
 sbml_graph_info_from_network_editor.extract_info(json.load(f))
 
@@ -31,14 +31,14 @@ the directory where the json file is located
 
 """
 
-sbml_graph_info_to_matplotlib_draw = sbmlplot.SBMLGraphInfoExportToMatPlotLib()
+sbml_graph_info_to_matplotlib_draw = networkinfotranslator.NetworkInfoExportToMatPlotLib()
 sbml_graph_info_to_matplotlib_draw.extract_graph_info(sbml_graph_info)
 sbml_graph_info_to_matplotlib_draw.export("exampleDirectory")
 
 """
 
 Exports
-    * a static illustration of the biological network of the SBML model
+    * a static illustration of the a network
 
 Parameters
 ----------
@@ -47,14 +47,14 @@ the directory to which the output figure is saved
 
 """
 
-sbml_graph_info_to_cytoscape_json = sbmlplot.SBMLGraphInfoExportToCytoscapeJs()
+sbml_graph_info_to_cytoscape_json = networkinfotranslator.NetworkInfoExportToCytoscapeJs()
 sbml_graph_info_to_cytoscape_json.extract_graph_info(sbml_graph_info)
 sbml_graph_info_to_cytoscape_json.export("exampleDirectory")
 
 """
 
 Exports
-    * a .json file containing the information required to render a dynamic illustration of the graph of the SBML model through cytoscape.js.
+    * a .json file containing the information required to render a dynamic illustration of a graph through cytoscape.js.
 
 Parameters
 ----------
@@ -63,14 +63,14 @@ the directory to which the output json file is saved
 
 """
 
-sbml_graph_info_to_network_editor_json = sbmlplot.SBMLGraphInfoExportToCytoscapeJs()
+sbml_graph_info_to_network_editor_json = networkinfotranslator.NetworkInfoExportToCytoscapeJs()
 sbml_graph_info_to_network_editor_json.extract_graph_info(sbml_graph_info)
 sbml_graph_info_to_network_editor_json.export("exampleDirectory")
 
 """
 
 Exports
-    * a .json file containing the information required to render a dynamic illustration of the graph of the SBML model through networkeditorGUI.
+    * a .json file containing the information required to render a dynamic illustration of a graph through networkeditorGUI.
 
 Parameters
 ----------

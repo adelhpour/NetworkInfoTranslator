@@ -76,7 +76,7 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
                   " is not registered.")
             sys.exit(1)
         self.layout = lmplugin.createLayout()
-        self.layout.setId("SBMLPlot_Layout")
+        self.layout.setId("NetworkInfoTranslator_Layout")
 
         # global render
         self.renderns = libsbml.RenderPkgNamespaces(3, 1, 1)
@@ -88,7 +88,7 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
                   " is not registered.")
             sys.exit(1)
         self.global_render = grplugin.createGlobalRenderInformation()
-        self.global_render.setId("SBMLPlot_Global_Render")
+        self.global_render.setId("NetworkInfoTranslator_Global_Render")
 
         # local render
         lrplugin = self.layout.getPlugin("render")
@@ -99,8 +99,8 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
                   " is not registered.")
             sys.exit(1)
         self.local_render = lrplugin.createLocalRenderInformation()
-        self.local_render.setId("SBMLPlot_Local_Render")
-        self.local_render.setReferenceRenderInformation("SBMLPlot_Global_Render")
+        self.local_render.setId("NetworkInfoTranslator_Local_Render")
+        self.local_render.setReferenceRenderInformation("NetworkInfoTranslator_Global_Render")
 
     def add_compartment(self, compartment):
         if 'referenceId' in list(compartment.keys()):
