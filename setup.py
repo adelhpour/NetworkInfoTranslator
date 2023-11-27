@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 MAJOR = 0
 MINOR = 0
-MICRO = 5
+MICRO = 6
 
 version = f'{MAJOR}.{MINOR}.{MICRO}'
 
