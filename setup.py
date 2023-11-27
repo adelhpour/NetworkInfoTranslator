@@ -16,7 +16,7 @@ setup(
     description="Visualize the network of SBML models",
     long_description_content_type = "text/x-rst",
     long_description = ("Network Info Translator is python tool that helps you render a static illustration of the biological network of the SBML model through matplotlib and generate a .json file containing the elements and styles information required to render a dynamic illustration of the biological network of the model through cytoscape.js."),
-    url="https://github.com/adelhpour/sbmlplot",
+    url="https://github.com/adelhpour/NetworkInfoTranslator",
     license = "MIT License",
     classifiers=[
         "Intended Audience :: Science/Research",
