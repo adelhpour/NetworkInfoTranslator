@@ -1,5 +1,5 @@
 libsbmlnetworkeditor
 matplotlib>=3.4.0
 numpy
-libsbml
+python-libsbml
 webcolors
