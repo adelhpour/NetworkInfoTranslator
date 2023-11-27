@@ -1,12 +1,15 @@
 from setuptools import setup
 from setuptools import find_packages
-  
 
 MAJOR = 0
 MINOR = 0
 MICRO = 3
 
 version = f'{MAJOR}.{MINOR}.{MICRO}'
+
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 
 setup(
     name="networkinfotranslator",
