@@ -1,4 +1,4 @@
-from imports.import_base import NetworkInfoImportBase
+from .import_base import NetworkInfoImportBase
 
 
 class NetworkInfoImportFromSBMLModelUsingLibSBNE(NetworkInfoImportBase):

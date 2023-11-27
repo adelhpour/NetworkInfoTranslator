@@ -1,4 +1,4 @@
-from exports.export_figure_base import NetworkInfoExportToFigureBase
+from .export_figure_base import NetworkInfoExportToFigureBase
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Rectangle, Ellipse, Polygon, Path, PathPatch

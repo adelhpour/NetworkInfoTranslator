@@ -1,10 +1,10 @@
-from imports.import_sbml import NetworkInfoImportFromSBMLModel
-from imports.import_network_editor import NetworkInfoImportFromNetworkEditor
-from exports.export_sbml import NetworkInfoExportToSBMLModel
-from exports.export_network_editor import NetworkInfoExportToNetworkEditor
-from exports.export_cytoscapejs import NetworkInfoExportToCytoscapeJs
-from exports.export_figure_matplotlib import NetworkInfoExportToMatPlotLib
-from exports.export_escher import NetworkInfoExportToEscher
+from .imports.import_sbml import NetworkInfoImportFromSBMLModel
+from .imports.import_network_editor import NetworkInfoImportFromNetworkEditor
+from .exports.export_sbml import NetworkInfoExportToSBMLModel
+from .exports.export_network_editor import NetworkInfoExportToNetworkEditor
+from .exports.export_cytoscapejs import NetworkInfoExportToCytoscapeJs
+from .exports.export_figure_matplotlib import NetworkInfoExportToMatPlotLib
+from .exports.export_escher import NetworkInfoExportToEscher
 
 """
 sbml_graph_info = NetworkInfoImportFromNetworkEditor()

@@ -1,5 +1,5 @@
 import libsbmlnetworkeditor
-from exports.export_base import NetworkInfoExportBase
+from .export_base import NetworkInfoExportBase
 import json
 from pathlib import Path as pathlib
 

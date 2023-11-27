@@ -1,4 +1,4 @@
-from exports.export_base import NetworkInfoExportBase
+from .export_base import NetworkInfoExportBase
 
 
 class NetworkInfoExportToJsonBase(NetworkInfoExportBase):
