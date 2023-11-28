@@ -351,9 +351,14 @@ class NetworkInfoImportFromSBMLModelUsingLibSBNE(NetworkInfoImportBase):
             text_features['plainText'] = sbne.ne_gtxt_getPlainText(text['glyphObject'])
         elif 'graphicalObject' in list(text.keys()):
             if sbne.ne_ne_isSetName(text['graphicalObject']):
-                text_features['plainText'] = sbne.ne_ne_getName(text['graphicalObject'])
-            else:
-                text_features['plainText'] = sbne.ne_ne_getId(text['graphicalObject'])
+                text_features['text-name'] = sbne.ne_ne_getName(text['graphicalObject'])
+            if sbne.ne_ne_isSetId(text['graphicalObject']):
+                text_features['text-id'] = sbne.ne_ne_getId(text['graphicalObject'])
+        if 'plainText' not in list(text_features.keys()):
+            if 'text-name' in list(text_features.keys()):
+                text_features['plainText'] = text_features['text-name']
+            elif 'text-id' in list(text_features.keys()):
+                text_features['plainText'] = text_features['text-id']
         # get bounding box features of the text glyph
         if sbne.ne_go_isSetBoundingBox(text['glyphObject']):
             text_features['boundingBox'] = self.extract_bounding_box_features(text['glyphObject'])

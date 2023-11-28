@@ -337,9 +337,9 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
             graphical_text_info = {}
             if 'shape' in list(text['info'].keys()) and text['info']['shape'].lower() == "text":
                 # get border color
-                if 'color' in list(text['info'].keys()):
-                    graphical_text_info['strokeColor'] = text['info']['color']
-                    self.add_color(text['info']['color'])
+                if 'text-color' in list(text['info'].keys()):
+                    graphical_text_info['strokeColor'] = text['info']['text-color']
+                    self.add_color(text['info']['text-color'])
 
                 # get position x
                 if 'x' in list(text['info'].keys()):

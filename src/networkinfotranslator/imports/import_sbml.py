@@ -389,6 +389,11 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                 text_features['plainText'] = libsbmlnetworkeditor.getSBMLObjectId(self.layout, text['graphicalObject'])
             else:
                 text_features['plainText'] = libsbmlnetworkeditor.getId(text['graphicalObject'])
+        if 'plainText' not in list(text_features.keys()):
+            if 'text-name' in list(text_features.keys()):
+                text_features['plainText'] = text_features['text-name']
+            elif 'text-id' in list(text_features.keys()):
+                text_features['plainText'] = text_features['text-id']
         # get bounding box features of the text glyph
         text_features['boundingBox'] = self.extract_bounding_box_features(libsbmlnetworkeditor.getBoundingBox(text['glyphObject']))
 

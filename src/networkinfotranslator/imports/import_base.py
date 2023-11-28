@@ -50,7 +50,7 @@ class NetworkInfoImportBase:
 
         return None
 
-    def find_color_value(self, color_id, search_among_gradients=True):
+    def find_color_value(self, color_id, search_among_gradients=False):
         # search among the gradients
         if search_among_gradients:
             for gradient in self.gradients:
@@ -69,8 +69,10 @@ class NetworkInfoImportBase:
             if color_id == color['id'] and \
                     'value' in list(color['features'].keys()):
                 return color['features']['value']
-
-        return color_id
+        if color_id.startswith("#"):
+            return color_id
+        else:
+            return "#ffffff"
 
     def find_color_unique_id(self):
         color_id = "color"

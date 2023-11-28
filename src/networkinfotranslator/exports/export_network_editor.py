@@ -203,7 +203,7 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         if 'strokeWidth' in list(go['features']['graphicalCurve'].keys()):
             geometric_shape['border-width'] = go['features']['graphicalCurve']['strokeWidth']
         geometric_shape.update(self.get_curve_style_features(go['features']['graphicalCurve']))
-        if len(go['features']['curve']):
+        if 'curve' in list(go['features'].keys()) and len(go['features']['curve']):
             geometric_shape.update(self.get_curve_features(go['features']['curve']))
         return geometric_shape
 
@@ -343,6 +343,11 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         text_shape = {'shape': "text"}
         if 'plainText' in list(text['features'].keys()):
             text_shape['plain-text'] = text['features']['plainText']
+        text_shape['plain-text-alternatives'] = []
+        if 'text-name' in list(text['features'].keys()) and text['features']['text-name'] != text_shape['plain-text']:
+            text_shape['plain-text-alternatives'].append(text['features']['text-name'])
+        if 'text-id' in list(text['features'].keys()) and text['features']['text-id'] != text_shape['plain-text']:
+            text_shape['plain-text-alternatives'].append(text['features']['text-id'])
         if 'graphicalText' in list(text['features'].keys()):
             text_shape.update(self.get_text_features(text, go_bounding_box))
         return text_shape
@@ -350,7 +355,7 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
     def get_text_features(self, text, go_bounding_box):
         features = {}
         if 'strokeColor' in list(text['features']['graphicalText'].keys()):
-            features['color'] = \
+            features['text-color'] = \
                 self.graph_info.find_color_value(text['features']['graphicalText']['strokeColor'])
         if 'fontFamily' in list(text['features']['graphicalText'].keys()):
             features['font-family'] = text['features']['graphicalText']['fontFamily']
