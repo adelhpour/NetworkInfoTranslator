@@ -239,7 +239,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                                                                     ['renderPointY']['abs'] +
                                                                     0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
                                                                     ['renderPointY']['rel'] * bbox_height]]), axis=0)
-                            self.draw_polygon(vertices, bbox_width, bbox_height,
+                                self.draw_polygon(vertices, bbox_width, bbox_height,
                                               stroke_color, stroke_width, stroke_dash_array, fill_color,
                                               offset_x, offset_y, slope, z_order)
 
