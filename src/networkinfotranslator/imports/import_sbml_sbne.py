@@ -52,6 +52,9 @@ class NetworkInfoImportFromSBMLModelUsingLibSBNE(NetworkInfoImportBase):
 
     def extract_render_package_info(self, veneer):
         if sbne.ne_ven_isRenderSpecified(veneer):
+            if sbne.ne_ven_isSetBackgroundColor(veneer):
+                self.background_color = sbne.ne_ven_getBackgroundColor(veneer)
+
             # get colors info
             for c_index in range(sbne.ne_ven_getNumColors(veneer)):
                 self.add_color(sbne.ne_ven_getColor(veneer, c_index))

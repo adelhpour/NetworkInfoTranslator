@@ -10,6 +10,7 @@ class NetworkInfoImportBase:
         self.gradients = []
         self.line_endings = []
         self.extents = {}
+        self.background_color = ""
 
     def reset_info(self):
         self.compartments.clear()
@@ -19,6 +20,7 @@ class NetworkInfoImportBase:
         self.gradients.clear()
         self.line_endings.clear()
         self.extents = {'minX': 0, 'maxX': 0, 'minY': 0, 'maxY': 0}
+        self.background_color = "white"
 
     def find_compartment(self, compartment_reference_id):
         for compartment in self.compartments:

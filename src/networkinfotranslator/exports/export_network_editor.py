@@ -341,6 +341,7 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                       'height': self.graph_info.extents['maxY'] - self.graph_info.extents['minY']}
         graph_info = {'generated_by': "NetworkInfoTranslator",
                       'name': pathlib(file_name).stem + "_graph",
+                      'background-color': self.graph_info.background_color,
                       'position': position,
                       'dimensions': dimensions,
                       'nodes': self.nodes,

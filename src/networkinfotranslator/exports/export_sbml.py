@@ -19,6 +19,7 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
         self.create_model()
         super().extract_graph_info(graph_info)
         self.set_layout_dimensions()
+        self.set_render_background_color()
 
         for color in self.graph_info.colors:
             self.add_color(color)
@@ -33,6 +34,9 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
         self.layout.setDimensions(libsbml.Dimensions(self.layoutns,
                                                      self.graph_info.extents['maxX'] - self.graph_info.extents['minX'],
                                                      self.graph_info.extents['maxY'] - self.graph_info.extents['minY']))
+
+    def set_render_background_color(self):
+        self.global_render.setBackgroundColor(self.graph_info.background_color)
 
     @staticmethod
     def check(value, message):

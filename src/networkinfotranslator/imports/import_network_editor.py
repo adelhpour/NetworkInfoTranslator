@@ -14,6 +14,7 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         f =  open(graph)
         self.graph_info = json.load(f)
         self.extract_extents(self.graph_info)
+        self.extract_background_color(self, graph_info)
         self.extract_entities(self.graph_info)
 
     def extract_extents(self, graph_info):
@@ -29,6 +30,10 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
             if 'height' in list(graph_info['dimensions'].keys()):
                 self.extents['minY'] -= 0.5 * graph_info['dimensions']['height']
                 self.extents['maxY'] = self.extents['minY'] + graph_info['dimensions']['height']
+
+    def extract_background_color(self, graph_info):
+        if 'background-color' in list(graph_info.keys()):
+            self.background_color = graph_info['background-color']
 
     def extract_entities(self, graph_info):
         if 'nodes' in list(graph_info.keys()):
