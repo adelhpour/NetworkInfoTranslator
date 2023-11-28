@@ -132,7 +132,10 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
                 color['id'] = self.find_color_unique_id()
             elif 'features' not in list(color.keys()) or 'value' not in list(color['features'].keys()):
                 color['features'] = {}
-                color['features']['value'] = webcolors.name_to_hex(color['id'])
+                try:
+                    color['features']['value'] = webcolors.name_to_hex(color['id'])
+                except:
+                    color['features']['value'] = webcolors.name_to_hex("white")
 
     def extract_line_ending_features(self, line_ending):
         line_ending['features'] = {}
@@ -142,7 +145,7 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         offset_x = line_ending['features']['boundingBox']['width']
         offset_y = 0.5 * line_ending['features']['boundingBox']['height']
 
-            # get features
+        # get features
         if 'shapes' in list(line_ending['info'].keys()):
             line_ending['features']['graphicalShape'] = \
                 self.extract_graphical_shape_features(line_ending['info']['shapes'], offset_x, offset_y)
