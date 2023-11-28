@@ -14,7 +14,7 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         f =  open(graph)
         self.graph_info = json.load(f)
         self.extract_extents(self.graph_info)
-        self.extract_background_color(self, graph_info)
+        self.extract_background_color(self.graph_info)
         self.extract_entities(self.graph_info)
 
     def extract_extents(self, graph_info):
@@ -403,7 +403,7 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
 
         # get fill color
         if 'fill-color' in list(rect_shape.keys()):
-            rect_shape_info['fillColor'] = rect_shape['fill'-color]
+            rect_shape_info['fillColor'] = rect_shape['fill-color']
             self.add_color(rect_shape['fill-color'])
 
         # get position x
@@ -462,9 +462,9 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         polygon_shape_info = {'shape': "polygon"}
 
         # get fill color
-        if 'fill' in list(polygon_shape.keys()):
-            polygon_shape_info['fillColor'] = polygon_shape['fill']
-            self.add_color(polygon_shape['fill'])
+        if 'fill-color' in list(polygon_shape.keys()):
+            polygon_shape_info['fillColor'] = polygon_shape['fill-color']
+            self.add_color(polygon_shape['fill-color'])
 
         # set vertices
         if 'points' in list(polygon_shape.keys()):
