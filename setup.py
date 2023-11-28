@@ -1,16 +1,15 @@
 from setuptools import setup
 from setuptools import find_packages
 
-MAJOR = 0
-MINOR = 0
-MICRO = 8
-
-version = f'{MAJOR}.{MINOR}.{MICRO}'
-
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
-
-
+    
+with open("VERSION.txt", "r") as f:
+    version = f.read().rstrip()
+    
+with open("requirements.txt", "r") as f:
+    requirements = f.readlines()
+    
 setup(
     name="networkinfotranslator",
     version=version,
@@ -30,6 +29,6 @@ setup(
     scripts=["testcases/test1.py"],
     package_dir={"": "src"},
     packages=find_packages(where="src"),
-    install_requires=open('requirements.txt').readlines(),
+    install_requires=requirements,
     python_requires=">=3.8"
 )
