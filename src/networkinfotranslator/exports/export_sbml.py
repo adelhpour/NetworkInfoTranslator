@@ -150,11 +150,15 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
                 'role' in list(species_reference.keys()) and \
                 'species' in list(species_reference.keys()):
             sr = None
-            if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "reactant":
+            if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "sidesubstrate" \
+                    or species_reference['role'].lower() == "side substrate" \
+                    or species_reference['role'].lower() == "reactant":
                 sr = reaction.createReactant()
                 self.check(sr.setConstant(True),
                            'set species_reference ' + species_reference['referenceId'] + ' "constant" attribute')
-            elif species_reference['role'].lower() == "product":
+                elif species_reference['role'].lower() == "product" or species_reference[
+                    'role'].lower() == "sideproduct" \
+                     or species_reference['role'].lower() == "side product":
                 sr = reaction.createProduct()
                 self.check(sr.setConstant(True),
                            'set species_reference ' + species_reference['referenceId'] + ' "constant" attribute')
@@ -219,8 +223,16 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
             species_reference_glyph.setSpeciesReferenceId(species_reference['referenceId'])
             if species_reference['role'].lower() == "substrate" or species_reference['role'].lower() == "reactant":
                 species_reference_glyph.setRole(libsbml.SPECIES_ROLE_SUBSTRATE)
+            elif species_reference['role'].lower() == "sidesubstrate" or species_reference[
+                'role'].lower() == "side substrate" \
+                    or species_reference['role'].lower() == "sidereactant" or species_reference[
+                'role'].lower() == "side reactant":
+                species_reference_glyph.setRole(libsbml.SPECIES_ROLE_SIDESUBSTRATE)
             elif species_reference['role'].lower() == "product":
                 species_reference_glyph.setRole(libsbml.SPECIES_ROLE_PRODUCT)
+            elif species_reference['role'].lower() == "sideproduct" or species_reference[
+                'role'].lower() == "side product":
+                species_reference_glyph.setRole(libsbml.SPECIES_ROLE_SIDEPRODUCT)
             self.set_glyph_curve(species_reference, species_reference_glyph)
             self.add_local_style(species_reference)
 

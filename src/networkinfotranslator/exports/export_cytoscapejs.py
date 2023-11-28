@@ -84,7 +84,8 @@ class NetworkInfoExportToCytoscapeJs(NetworkInfoExportToJsonBase):
                 species = s
                 break
         if species and 'role' in list(species_reference.keys()):
-            if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "side product":
+            if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "sideproduct"\
+                    or species_reference['role'].lower() == "side product":
                 edge['data']['source'] = reaction['id']
                 edge['data']['target'] = species['id']
             else:

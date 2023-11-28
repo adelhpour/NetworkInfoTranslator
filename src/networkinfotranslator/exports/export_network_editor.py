@@ -87,7 +87,7 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
     def set_edge_nodes(self, edge, species_reference, reaction):
         species = {}
         for s in self.graph_info.species:
-            if s['referenceId'] == species_reference['species']:
+            if s['referenceId'] == species_reference['species'] and s['id'] == species_reference['speciesGlyph']:
                 species = s
                 break
         if 'role' in list(species_reference.keys()):
@@ -238,30 +238,36 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         return geometric_shape
 
     @staticmethod
+    @staticmethod
     def get_curve_features(curve):
         curve_shape = {}
-        element = curve[0]
-        if all(k in element.keys() for k in ('startX', 'startY', 'endX', 'endY',
-                                             'basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
-            curve_shape['p1'] = {'x': 0, 'y': 0}
-            if abs(element['endX'] - element['startX']) > 0:
+        start_element = curve[0]
+        end_element = curve[len(curve) - 1]
+        curve_shape['p1'] = {'x': 0, 'y': 0}
+        curve_shape['p2'] = {'x': 0, 'y': 0}
+        if all(k in start_element.keys() for k in ('startX', 'startY', 'endX', 'endY',
+                                                   'basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
+            if abs(end_element['endX'] - start_element['startX']) > 0:
                 curve_shape['p1']['x'] = \
-                    round((element['basePoint1X'] - element['startX']) / (
-                            0.01 * (element['endX'] - element['startX'])))
-            if abs(element['endY'] - element['startY']) > 0:
+                    round((start_element['basePoint1X'] - start_element['startX']) / (
+                            0.01 * (end_element['endX'] - start_element['startX'])))
+            if abs(end_element['endY'] - start_element['startY']) > 0:
                 curve_shape['p1']['y'] = \
-                    round((element['basePoint1Y'] - element['startY']) / (
-                            0.01 * (element['endY'] - element['startY'])))
-            curve_shape['p2'] = {'x': 0, 'y': 0}
-            if abs(element['endX'] - element['startX']) > 0:
+                    round((start_element['basePoint1Y'] - start_element['startY']) / (
+                            0.01 * (end_element['endY'] - start_element['startY'])))
+        if all(k in end_element.keys() for k in ('startX', 'startY', 'endX', 'endY',
+                                                 'basePoint1X', 'basePoint1Y', 'basePoint2X',
+                                                 'basePoint2Y')):
+            if abs(end_element['endX'] - start_element['startX']) > 0:
                 curve_shape['p2']['x'] = \
                     round(
-                        (element['basePoint2X'] - element['endX']) / (0.01 * (element['endX'] - element['startX'])))
-            if abs(element['endY'] - element['startY']) > 0:
+                        (end_element['basePoint2X'] - end_element['endX']) / (
+                                    0.01 * (end_element['endX'] - start_element['startX'])))
+            if abs(end_element['endY'] - start_element['startY']) > 0:
                 curve_shape['p2']['y'] = \
                     round(
-                        (element['basePoint2Y'] - element['endY']) / (0.01 * (element['endY'] - element['startY'])))
-
+                        (end_element['basePoint2Y'] - end_element['endY']) / (
+                                    0.01 * (end_element['endY'] - start_element['startY'])))
         return curve_shape
 
     @staticmethod
