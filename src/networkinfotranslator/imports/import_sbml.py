@@ -53,7 +53,7 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def extract_global_render_features(self):
         if libsbmlnetworkeditor.isSetBackgroundColor(self.global_render):
-            self.background_color = libsbmlnetworkeditor.getBackgroundColor((self.global_render)
+            self.background_color = libsbmlnetworkeditor.getBackgroundColor(self.global_render)
 
         # get colors info
         for c_index in range(libsbmlnetworkeditor.getNumColorDefinitions(self.global_render)):
