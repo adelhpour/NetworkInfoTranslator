@@ -156,7 +156,7 @@ class NetworkInfoExportToSBMLModel(NetworkInfoExportBase):
                 sr = reaction.createReactant()
                 self.check(sr.setConstant(True),
                            'set species_reference ' + species_reference['referenceId'] + ' "constant" attribute')
-                elif species_reference['role'].lower() == "product" or species_reference[
+            elif species_reference['role'].lower() == "product" or species_reference[
                     'role'].lower() == "sideproduct" \
                      or species_reference['role'].lower() == "side product":
                 sr = reaction.createProduct()
