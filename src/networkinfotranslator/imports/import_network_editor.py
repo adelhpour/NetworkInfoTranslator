@@ -116,7 +116,10 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
     def extract_reaction_features(self, reaction):
         if 'parent' in list(reaction['info'].keys()):
             reaction['compartment'] = reaction['info']['parent']
-        self.extract_node_features(reaction)
+        if self.is_centroid_node(reaction):
+            self.extract_centroid_node_features(reaction)
+        else:
+            self.extract_node_features(reaction)
 
     def extract_species_reference_features(self, species_reference):
         if 'style' in list(species_reference['info'].keys()) and\
@@ -174,6 +177,43 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         # get text features
         if 'texts' in list(node.keys()):
             self.extract_text_features(node)
+
+    def extract_centroid_node_features(self, centroid_node):
+        centroid_node['features'] = {'graphicalCurve': {}, 'curve': []}
+        centroid_node['texts'] = []
+
+        # get curve features
+        bounding_box = self.get_bounding_box_features(centroid_node['info'])
+        centroid_node['features']['curve'] = [{'startX': bounding_box['x'] + 0.5 * bounding_box['width'],
+                                               'startY': bounding_box['y'] + 0.5 * bounding_box['height'],
+                                               'endX': bounding_box['x'] + 0.5 * bounding_box['width'],
+                                               'endY': bounding_box['y'] + 0.5 * bounding_box['height']}]
+
+        # get style features
+        if 'style' in list(centroid_node['info'].keys()):
+            if 'name' in list(centroid_node['info']['style']):
+                centroid_node['features']['styleName'] = centroid_node['info']['style']['name']
+            centroid_shape = centroid_node['info']['style']['shapes'][0]
+            # get border color
+            if 'border-color' in list(centroid_shape.keys()):
+                centroid_node['features']['graphicalCurve']['strokeColor'] = centroid_shape['border-color']
+            # get border width
+            if 'border-width' in list(centroid_shape.keys()):
+                centroid_node['features']['graphicalCurve']['strokeWidth'] = centroid_shape['border-width']
+            # get fill color
+            if 'fill-color' in list(centroid_shape.keys()):
+                centroid_node['features']['graphicalCurve']['fillColor'] = centroid_shape['fill-color']
+
+    @staticmethod
+    def is_centroid_node(node):
+        if 'style' in list(node['info'].keys()) \
+                and 'shapes' in list(node['info']['style'].keys()) \
+                and len(node['info']['style']['shapes']) == 1 \
+                and 'shape' in list(node['info']['style']['shapes'][0].keys()) \
+                and node['info']['style']['shapes'][0]['shape'] == "centroid":
+            return True
+
+        return False
 
     def extract_edge_features(self, edge):
         edge['features'] = {}
@@ -238,14 +278,14 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
                 # get geometric shape specific features
                 geometric_shape_info = self.extract_geometric_shape_exclusive_features(shape, offset_x, offset_y)
 
-                # get stroke color
+                # get border color
                 if 'border-color' in list(shape.keys()):
                     geometric_shape_info['strokeColor'] = shape['border-color']
                     self.add_color(shape['border-color'])
 
-                # get stroke width
-                if 'stroke-width' in list(shape.keys()):
-                    geometric_shape_info['strokeWidth'] = shape['stroke-width']
+                # get border width
+                if 'border-width' in list(shape.keys()):
+                    geometric_shape_info['strokeWidth'] = shape['border-width']
 
                 if 'shape' in list(geometric_shape_info.keys()):
                     graphical_shape_info['geometricShapes'].append(geometric_shape_info)
@@ -254,14 +294,16 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
 
     def extract_curve_features(self, shape, curve):
         curve_info = {}
-        if 'shape' in list(shape.keys()) and shape['shape'].lower() == "line":
-            # get stroke color
+        if 'shape' in list(shape.keys()) and (shape['shape'].lower() == "line" or \
+                                              shape['shape'].lower() == "connected-to-source-centroid-shape-line" or \
+                                              shape['shape'].lower() == "connected-to-target-centroid-shape-line"):
+            # get border color
             if 'border-color' in list(shape.keys()):
                 curve_info['strokeColor'] = shape['border-color']
                 self.add_color(shape['border-color'])
-            # get stroke width
-            if 'stroke-width' in list(shape.keys()):
-                curve_info['strokeWidth'] = shape['stroke-width']
+            # get border width
+            if 'border-width' in list(shape.keys()):
+                curve_info['strokeWidth'] = shape['border-width']
 
             # get bezier features
             if len(curve):
@@ -294,7 +336,7 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
                                                            height=node['features']['boundingBox']['height'])
             graphical_text_info = {}
             if 'shape' in list(text['info'].keys()) and text['info']['shape'].lower() == "text":
-                # get stroke color
+                # get border color
                 if 'color' in list(text['info'].keys()):
                     graphical_text_info['strokeColor'] = text['info']['color']
                     self.add_color(text['info']['color'])

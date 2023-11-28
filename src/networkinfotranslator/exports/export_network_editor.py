@@ -49,15 +49,40 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
     @staticmethod
     def initialize_node_style(go, category):
         parent_category = ""
+        convertible_parent_category = ""
+        parent_title = ""
+        parent_categories = []
         if category == "Compartment":
             parent_category = "Compartment"
-        return {'name': go['id'] + "_style", 'category': category,
-                'parent-category': parent_category, 'shapes': []}
+            convertible_parent_category = "Compartment"
+        else:
+            parent_categories = ["Compartment"]
+            parent_title = "Compartment"
+        return {'name': go['referenceId'] + "_style", 'category': category, 'sub-category': "",
+                'convertible-parent-category': convertible_parent_category, 'parent-category': parent_category,
+                'parent-categories': parent_categories, 'parent-title': parent_title,
+                'is-name-editable': True, 'name-title': "Id",
+                'shapes': []}
 
     @staticmethod
     def initialize_edge_style(species_reference):
-        return {'name': species_reference['id'] + "_style", 'category': "SpeciesReference",
-                'sub-category': species_reference['role'], 'shapes': []}
+        connectable_source_node_title = "Species"
+        connectable_source_node_categories = ["Species"]
+        connectable_target_node_title = "Reaction"
+        connectable_target_node_categories = ["Reaction"]
+        if species_reference['role'].lower() == "product" or species_reference['role'].lower() == "side product":
+            connectable_source_node_title = "Reaction"
+            connectable_source_node_categories = ["Reaction"]
+            connectable_target_node_title = "Species"
+            connectable_target_node_categories = ["Species"]
+
+        return {'name': species_reference['referenceId'] + "_style", 'category': "SpeciesReference",
+                'sub-category': species_reference['role'],
+                'connectable-source-node-title': connectable_source_node_title,
+                'connectable-source-node-categories': connectable_source_node_categories,
+                'connectable-target-node-title': connectable_target_node_title,
+                'connectable-target-node-categories': connectable_target_node_categories,
+                'name-title': "Id", 'is-name-editable': True, 'shapes': []}
 
     def set_edge_nodes(self, edge, species_reference, reaction):
         species = {}
@@ -78,8 +103,11 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                 node['dimensions'] = self.get_node_dimensions(go)
             if 'graphicalShape' in list(go['features'].keys())\
                     and 'geometricShapes' in list(go['features']['graphicalShape'].keys()):
-                style['shapes'] = self.get_shape_style(go, offset_x=-0.5 * go['features']['boundingBox']['width'],
-                                     offset_y=-0.5 * go['features']['boundingBox']['height'])
+                if len(go['features']['graphicalShape']['geometricShapes']):
+                    style['shapes'] = self.get_shape_style(go, offset_x=-0.5 * go['features']['boundingBox']['width'],
+                                                           offset_y=-0.5 * go['features']['boundingBox']['height'])
+                elif 'curve' in list(go['features'].keys()):
+                    style['shapes'] = self.get_centroid_shape_style(go)
             if 'texts' in list(go.keys()):
                 for text in go['texts']:
                     if 'features' in list(text.keys()):
@@ -87,11 +115,20 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
 
     def extract_edge_features(self, go, style):
         if 'features' in list(go.keys()) and 'graphicalCurve' in list(go['features'].keys()):
-            style['shapes'].append(self.get_curve_style(go))
+            curve_style = self.get_curve_style(go)
+            curve_style["shape"] = self.get_curve_style_shape_type(style)
+            style['shapes'].append(curve_style)
             if 'heads' in list(go['features']['graphicalCurve'].keys()) \
                     and 'end' in list(go['features']['graphicalCurve']['heads'].keys()):
                 style['arrow-head'] =\
                     self.get_arrow_heads(go['features']['graphicalCurve']['heads'], style['name'])
+
+    @staticmethod
+    def get_curve_style_shape_type(style):
+        if style['connectable-source-node-title'] == "Reaction":
+            return "connected-to-source-centroid-shape-line"
+        else:
+            return "connected-to-target-centroid-shape-line"
 
     @staticmethod
     def get_node_position(go):
@@ -145,6 +182,17 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                 geometric_shapes.append(geometric_shape)
         return geometric_shapes
 
+    @staticmethod
+    def get_centroid_shape_style(go):
+        geometric_shape = {'shape': "centroid"}
+        if 'strokeColor' in list(go['features']['graphicalShape'].keys()):
+            geometric_shape['border-color'] = go['features']['graphicalShape']['strokeColor']
+        if 'strokeWidth' in list(go['features']['graphicalShape'].keys()):
+            geometric_shape['border-width'] = go['features']['graphicalShape']['strokeWidth']
+        if 'fillColor' in list(go['features']['graphicalShape'].keys()):
+            geometric_shape['fill-color'] = go['features']['graphicalShape']['fillColor']
+        return [geometric_shape]
+
     def get_curve_style(self, go):
         geometric_shape = {}
         if 'strokeColor' in list(go['features']['graphicalCurve'].keys()):
@@ -195,7 +243,6 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         element = curve[0]
         if all(k in element.keys() for k in ('startX', 'startY', 'endX', 'endY',
                                              'basePoint1X', 'basePoint1Y', 'basePoint2X', 'basePoint2Y')):
-            curve_shape['shape'] = "bezier"
             curve_shape['p1'] = {'x': 0, 'y': 0}
             if abs(element['endX'] - element['startX']) > 0:
                 curve_shape['p1']['x'] = \
@@ -214,8 +261,7 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                 curve_shape['p2']['y'] = \
                     round(
                         (element['basePoint2Y'] - element['endY']) / (0.01 * (element['endY'] - element['startY'])))
-        else:
-            curve_shape['shape'] = "line"
+
         return curve_shape
 
     @staticmethod
