@@ -231,9 +231,9 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
                 geometric_shape_info = self.extract_geometric_shape_exclusive_features(shape, offset_x, offset_y)
 
                 # get stroke color
-                if 'stroke' in list(shape.keys()):
-                    geometric_shape_info['strokeColor'] = shape['stroke']
-                    self.add_color(shape['stroke'])
+                if 'border-color' in list(shape.keys()):
+                    geometric_shape_info['strokeColor'] = shape['border-color']
+                    self.add_color(shape['border-color'])
 
                 # get stroke width
                 if 'stroke-width' in list(shape.keys()):
@@ -248,9 +248,9 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         curve_info = {}
         if 'shape' in list(shape.keys()) and shape['shape'].lower() == "line":
             # get stroke color
-            if 'stroke' in list(shape.keys()):
-                curve_info['strokeColor'] = shape['stroke']
-                self.add_color(shape['stroke'])
+            if 'border-color' in list(shape.keys()):
+                curve_info['strokeColor'] = shape['border-color']
+                self.add_color(shape['border-color'])
             # get stroke width
             if 'stroke-width' in list(shape.keys()):
                 curve_info['strokeWidth'] = shape['stroke-width']
@@ -328,19 +328,19 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
                     graphical_text_info['fontStyle'] = text['info']['font-style']
 
                 # get horizontal text anchor
-                if 'text-anchor' in list(text['info'].keys()):
-                    graphical_text_info['hTextAnchor'] = text['info']['text-anchor']
+                if 'horizontal-alignment' in list(text['info'].keys()):
+                    graphical_text_info['hTextAnchor'] = text['info']['horizontal-alignment']
 
                 # get vertical text anchor
-                if 'vtext-anchor' in list(text['info'].keys()):
-                    graphical_text_info['vTextAnchor'] = text['info']['vtext-anchor']
+                if 'vertical-alignment' in list(text['info'].keys()):
+                    graphical_text_info['vTextAnchor'] = text['info']['vertical-alignment']
 
             # get group features
             text['features']['graphicalText'] = graphical_text_info
 
 
     def extract_geometric_shape_exclusive_features(self, shape, offset_x=0, offset_y=0):
-        if shape['shape'].lower() == "rect":
+        if shape['shape'].lower() == "rectangle":
             return self.extract_rectangle_shape_features(shape, offset_x, offset_y)
         elif shape['shape'].lower() == "ellipse":
             return self.extract_ellipse_shape_features(shape, offset_x, offset_y)
@@ -352,9 +352,9 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         rect_shape_info = {'shape': "rectangle"}
 
         # get fill color
-        if 'fill' in list(rect_shape.keys()):
-            rect_shape_info['fillColor'] = rect_shape['fill']
-            self.add_color(rect_shape['fill'])
+        if 'fill-color' in list(rect_shape.keys()):
+            rect_shape_info['fillColor'] = rect_shape['fill'-color]
+            self.add_color(rect_shape['fill-color'])
 
         # get position x
         if 'x' in list(rect_shape.keys()):
@@ -386,9 +386,9 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         ellipse_shape_info = {'shape': "ellipse"}
 
         # get fill color
-        if 'fill' in list(ellipse_shape.keys()):
-            ellipse_shape_info['fillColor'] = ellipse_shape['fill']
-            self.add_color(ellipse_shape['fill'])
+        if 'fill-color' in list(ellipse_shape.keys()):
+            ellipse_shape_info['fillColor'] = ellipse_shape['fill-color']
+            self.add_color(ellipse_shape['fill-color'])
 
         # get position cx
         if 'cx' in list(ellipse_shape.keys()):

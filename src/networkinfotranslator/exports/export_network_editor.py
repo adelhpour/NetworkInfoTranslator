@@ -131,14 +131,14 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                 default_stroke = \
                     self.graph_info.find_color_value(go['features']['graphicalShape']['strokeColor'])
                 if default_stroke:
-                    geometric_shape['stroke'] = default_stroke
+                    geometric_shape['border-color'] = default_stroke
             if 'strokeWidth' in list(go['features']['graphicalShape'].keys()):
-                geometric_shape['stroke-width'] = go['features']['graphicalShape']['strokeWidth']
+                geometric_shape['border-width'] = go['features']['graphicalShape']['strokeWidth']
             if 'fillColor' in list(go['features']['graphicalShape'].keys()):
                 default_fill = \
                     self.graph_info.find_color_value(go['features']['graphicalShape']['fillColor'])
                 if default_fill:
-                    geometric_shape['fill'] = default_fill
+                    geometric_shape['fill-color'] = default_fill
             geometric_shape.update(
                 self.get_geometric_shape_features(gs, self.get_node_dimensions(go), offset_x, offset_y))
             if 'shape' in list(geometric_shape.keys()):
@@ -151,9 +151,9 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
             default_stroke = \
                 self.graph_info.find_color_value(go['features']['graphicalCurve']['strokeColor'])
             if default_stroke:
-                geometric_shape['stroke'] = default_stroke
+                geometric_shape['border-color'] = default_stroke
         if 'strokeWidth' in list(go['features']['graphicalCurve'].keys()):
-            geometric_shape['stroke-width'] = go['features']['graphicalCurve']['strokeWidth']
+            geometric_shape['border-width'] = go['features']['graphicalCurve']['strokeWidth']
         geometric_shape.update(self.get_curve_style_features(go['features']['graphicalCurve']))
         if len(go['features']['curve']):
             geometric_shape.update(self.get_curve_features(go['features']['curve']))
@@ -162,11 +162,11 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
     def get_geometric_shape_features(self, gs, dimensions, offset_x, offset_y):
         geometric_shape = {}
         if 'strokeColor' in list(gs.keys()):
-            geometric_shape['stroke'] = self.graph_info.find_color_value(gs['strokeColor'])
+            geometric_shape['border-color'] = self.graph_info.find_color_value(gs['strokeColor'])
         if 'strokeWidth' in list(gs.keys()):
-            geometric_shape['stroke-width'] = gs['strokeWidth']
+            geometric_shape['border-width'] = gs['strokeWidth']
         if 'fillColor' in list(gs.keys()):
-            geometric_shape['fill'] = self.graph_info.find_color_value(gs['fillColor'])
+            geometric_shape['fill-color'] = self.graph_info.find_color_value(gs['fillColor'])
         if 'shape' in list(gs.keys()):
             if gs['shape'].lower() == "rectangle":
                 geometric_shape.update(
@@ -184,9 +184,9 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         if 'strokeColor' in list(gc.keys()):
             geometric_shape['stroke'] = self.graph_info.find_color_value(gc['strokeColor'])
         if 'strokeWidth' in list(gc.keys()):
-            geometric_shape['stroke-width'] = gc['strokeWidth']
+            geometric_shape['border-width'] = gc['strokeWidth']
         if 'fillColor' in list(gc.keys()):
-            geometric_shape['fill'] = self.graph_info.find_color_value(gc['fillColor'])
+            geometric_shape['fill-color'] = self.graph_info.find_color_value(gc['fillColor'])
         return geometric_shape
 
     @staticmethod
@@ -244,7 +244,7 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
 
     @staticmethod
     def get_rectangle_features(gs, dimensions, offset_x, offset_y):
-        rectangle_shape = {'shape': "rect"}
+        rectangle_shape = {'shape': "rectangle"}
         if 'x' in list(gs.keys()):
             rectangle_shape['x'] = gs['x']['abs'] + \
                                    0.01 * gs['x']['rel'] * dimensions['width'] + offset_x
@@ -307,9 +307,9 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         if 'fontStyle' in list(text['features']['graphicalText'].keys()):
             features['font-style'] = text['features']['graphicalText']['fontStyle']
         if 'hTextAnchor' in list(text['features']['graphicalText'].keys()):
-            features['text-anchor'] = text['features']['graphicalText']['hTextAnchor']
+            features['horizontal-alignment'] = text['features']['graphicalText']['hTextAnchor']
         if 'vTextAnchor' in list(text['features']['graphicalText'].keys()):
-            features['vtext-anchor'] = text['features']['graphicalText']['vTextAnchor']
+            features['vertical-alignment'] = text['features']['graphicalText']['vTextAnchor']
         if 'boundingBox' in list(text['features'].keys()):
             features['x'] = text['features']['boundingBox']['x'] -\
                             (go_bounding_box['x'] + 0.5 * go_bounding_box['width'])
