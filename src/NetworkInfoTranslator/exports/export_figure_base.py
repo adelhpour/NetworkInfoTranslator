@@ -1,4 +1,5 @@
 from .export_base import NetworkInfoExportBase
+import numpy as np
 import math
 
 class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
@@ -81,37 +82,164 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
 
                 if 'geometricShapes' in list(features['graphicalShape'].keys()):
                     for gs_index in range(len(features['graphicalShape']['geometricShapes'])):
+                        if 'strokeColor' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                            stroke_color = features['graphicalShape']['geometricShapes'][gs_index]['strokeColor']
+                        if 'strokeWidth' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                            stroke_width = features['graphicalShape']['geometricShapes'][gs_index]['strokeWidth']
+                        if 'strokeDashArray' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                            stroke_dash_array = (
+                            0, features['graphicalShape']['geometricShapes'][gs_index]['strokeDashArray'])
+                        if 'fillColor' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                            fill_color = features['graphicalShape']['geometricShapes'][gs_index]['fillColor']
+
                         # draw an image
                         if features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'image':
-                            self.draw_image(features['graphicalShape']['geometricShapes'][gs_index],
-                                       bbox_x, bbox_y, bbox_width, bbox_height,
+                            image_x = bbox_x
+                            image_y = bbox_y
+                            image_width = bbox_width
+                            image_height = bbox_height
+                            if 'x' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                image_x += features['graphicalShape']['geometricShapes'][gs_index]['x']['abs'] + \
+                                              0.01 * features['graphicalShape']['geometricShapes'][gs_index]['x']['rel'] * image_width
+                            if 'y' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                image_y += features['graphicalShape']['geometricShapes'][gs_index]['y']['abs'] + \
+                                              0.01 * features['graphicalShape']['geometricShapes'][gs_index]['y']['rel'] * image_height
+                            if 'width' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                image_width = features['graphicalShape']['geometricShapes'][gs_index]['width']['abs'] + \
+                                                  0.01 * features['graphicalShape']['geometricShapes'][gs_index]['width']['rel'] * image_width
+                            if 'height' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                image_height = features['graphicalShape']['geometricShapes'][gs_index]['height']['abs'] + \
+                                               0.01 * features['graphicalShape']['geometricShapes'][gs_index]['height']['rel'] * image_height
+                            if 'href' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                self.draw_image(href, image_x, image_y, image_width, image_height,
                                             offset_x, offset_y, slope, z_order)
 
                         # draw a render curve
                         elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'renderCurve':
-                            self.draw_render_curve(features['graphicalShape']['geometricShapes'][gs_index],
-                                                   bbox_x, bbox_y, bbox_width, bbox_height,
-                                                   stroke_color, stroke_width, stroke_dash_array, z_order)
+                            curve_features = {'graphicalCurve': {'strokeColor': stroke_color,
+                                                                 'strokeWidth': stroke_width,
+                                                                 'strokeDashArray': stroke_dash_array}}
+
+                            # add a render curve to plot
+                            if 'vertices' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                curve_features['curve'] = []
+                                for v_index in range(len(features['graphicalShape']['geometricShapes'][gs_index]['vertices']) - 1):
+                                    element_ = {'startX': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['renderPointX']['abs'] +
+                                                          0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['renderPointX'][
+                                                              'rel'] * bbox_width + bbox_x,
+                                                'startY': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['renderPointY']['abs'] +
+                                                          0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['renderPointY'][
+                                                              'rel'] * bbox_height + bbox_y,
+                                                'endX': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index + 1]['renderPointX']['abs'] +
+                                                        0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index + 1]['renderPointX'][
+                                                            'rel'] * bbox_width + bbox_x,
+                                                'endY': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index + 1]['renderPointY']['abs'] +
+                                                        0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index + 1]['renderPointY'][
+                                                            'rel'] * bbox_height + bbox_y}
+
+                                    if 'basePoint1X' in list(features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index].keys()):
+                                        element_ = {
+                                            'basePoint1X': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint1X']['abs'] +
+                                                           0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint1X'][
+                                                               'rel'] * bbox_width + bbox_x,
+                                            'basePoint1Y': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint1Y']['abs'] +
+                                                           0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint1Y'][
+                                                               'rel'] * bbox_height + bbox_y,
+                                            'basePoint2X': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint2X']['abs'] +
+                                                           0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint2X'][
+                                                               'rel'] * bbox_width + bbox_x,
+                                            'basePoint2Y': features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint2Y']['abs'] +
+                                                           0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]['basePoint2Y'][
+                                                               'rel'] * bbox_height + bbox_y}
+                                    curve_features['curve'].append(element_)
+                                self.add_curve_to_scene(curve_features, z_order)
 
                         # draw a rounded rectangle
                         elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'rectangle':
-                            self.draw_rounded_rectangle(features['graphicalShape']['geometricShapes'][gs_index],
-                                                        bbox_x, bbox_y, bbox_width, bbox_height,
-                                                        stroke_color, stroke_width, stroke_dash_array, fill_color,
-                                                        offset_x, offset_y, slope, z_order)
+                            position_x = bbox_x
+                            position_y = bbox_y
+                            dimension_width = bbox_width
+                            dimension_height = bbox_height
+                            corner_radius = 0.0
 
+                            if 'x' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                position_x += features['graphicalShape']['geometricShapes'][gs_index]['x']['abs'] + \
+                                              0.01 * features['graphicalShape']['geometricShapes'][gs_index]['x']['rel'] * bbox_width
+                            if 'y' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                position_y += features['graphicalShape']['geometricShapes'][gs_index]['y']['abs'] + \
+                                              0.01 * features['graphicalShape']['geometricShapes'][gs_index]['y']['rel'] * bbox_height
+                            if 'width' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                dimension_width = features['graphicalShape']['geometricShapes'][gs_index]['width']['abs'] + \
+                                                  0.01 * features['graphicalShape']['geometricShapes'][gs_index]['width']['rel'] * bbox_width
+                            if 'height' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                dimension_height = features['graphicalShape']['geometricShapes'][gs_index]['height']['abs'] + \
+                                                   0.01 * features['graphicalShape']['geometricShapes'][gs_index]['height']['rel'] * bbox_height
+                            if 'ratio' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()) and \
+                                    features['graphicalShape']['geometricShapes'][gs_index]['ratio'] > 0.0:
+                                if (bbox_width / bbox_height) <= features['graphicalShape']['geometricShapes'][gs_index]['ratio']:
+                                    dimension_width = bbox_width
+                                    dimension_height = bbox_width / features['graphicalShape']['geometricShapes'][gs_index]['ratio']
+                                    position_y += 0.5 * (bbox_height - dimension_height)
+                                else:
+                                    dimension_height = bbox_height
+                                    dimension_width = features['graphicalShape']['geometricShapes'][gs_index]['ratio'] * bbox_height
+                                    position_x += 0.5 * (bbox_width - dimension_width)
+                            if 'rx' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                corner_radius = features['graphicalShape']['geometricShapes'][gs_index]['rx']['abs'] + \
+                                                0.01 * features['graphicalShape']['geometricShapes'][gs_index]['rx']['rel'] * 0.5 * (bbox_width + bbox_height)
+                            elif 'ry' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                corner_radius = features['graphicalShape']['geometricShapes'][gs_index]['ry']['abs'] + \
+                                                0.01 * features['graphicalShape']['geometricShapes'][gs_index]['ry']['rel'] * 0.5 * (bbox_width + bbox_height)
+
+                            self.draw_rounded_rectangle(position_x, position_y, dimension_width, dimension_height,
+                                                        stroke_color, stroke_width, stroke_dash_array, fill_color,
+                                                        offset_x, offset_y, corner_radius, slope, z_order)
 
                         # draw an ellipse
                         elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'ellipse':
-                            self.draw_ellipse(features['graphicalShape']['geometricShapes'][gs_index],
-                                              bbox_x, bbox_y, bbox_width, bbox_height,
+                            position_cx = bbox_x
+                            position_cy = bbox_y
+                            dimension_rx = 0.5 * bbox_width
+                            dimension_ry = 0.5 * bbox_height
+
+                            if 'cx' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                position_cx += features['graphicalShape']['geometricShapes'][gs_index]['cx']['abs'] +\
+                                               0.01 * features['graphicalShape']['geometricShapes'][gs_index]['cx']['rel'] * bbox_width
+                            if 'cy' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                position_cy += features['graphicalShape']['geometricShapes'][gs_index]['cy']['abs'] +\
+                                               0.01 * features['graphicalShape']['geometricShapes'][gs_index]['cy']['rel'] * bbox_height
+                            if 'rx' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                dimension_rx = features['graphicalShape']['geometricShapes'][gs_index]['rx']['abs'] +\
+                                               0.01 * features['graphicalShape']['geometricShapes'][gs_index]['rx']['rel'] * bbox_width
+                            if 'ry' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                dimension_ry = features['graphicalShape']['geometricShapes'][gs_index]['ry']['abs'] + \
+                                               0.01 * features['graphicalShape']['geometricShapes'][gs_index]['ry']['rel'] * bbox_height
+                            if 'ratio' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()) and features['graphicalShape']['geometricShapes'][gs_index]['ratio'] > 0.0:
+                                if (bbox_width / bbox_height) <= features['graphicalShape']['geometricShapes'][gs_index]['ratio']:
+                                    dimension_rx = 0.5 * bbox_width
+                                    dimension_ry = (0.5 * bbox_width / features['graphicalShape']['geometricShapes'][gs_index]['ratio'])
+                                else:
+                                    dimension_ry = 0.5 * bbox_height
+                                    dimension_rx = features['graphicalShape']['geometricShapes'][gs_index]['ratio'] * 0.5 * bbox_height
+                            self.draw_ellipse(position_cx, position_cy, dimension_rx, dimension_ry,
                                               stroke_color, stroke_width, stroke_dash_array, fill_color,
                                               offset_x, offset_y, slope, z_order)
 
                         # draw a polygon
                         elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'polygon':
-                            self.draw_polygon(features['graphicalShape']['geometricShapes'][gs_index],
-                                              bbox_x, bbox_y, bbox_width, bbox_height,
+                            if 'vertices' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
+                                vertices = np.empty((0, 2))
+                                for v_index in range(len(features['graphicalShape']['geometricShapes'][gs_index]['vertices'])):
+                                    vertices = np.append(vertices,
+                                                         np.array([[features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
+                                                                    ['renderPointX']['abs'] +
+                                                                    0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
+                                                                    ['renderPointX']['rel'] * bbox_width,
+                                                                    features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
+                                                                    ['renderPointY']['abs'] +
+                                                                    0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
+                                                                    ['renderPointY']['rel'] * bbox_height]]), axis=0)
+                            self.draw_polygon(vertices, bbox_width, bbox_height,
                                               stroke_color, stroke_width, stroke_dash_array, fill_color,
                                               offset_x, offset_y, slope, z_order)
 
@@ -262,17 +390,13 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                                                           offset_y=features['endPoint']['y'],
                                                           slope=features['endSlope'], z_order=2)
 
-    def draw_image(self, image_shape, bbox_x, bbox_y, bbox_width, bbox_height,
+    def draw_image(self, bbox_x, bbox_y, bbox_width, bbox_height,
                    offset_x, offset_y, slope, z_order):
         pass
 
-    def draw_render_curve(self, curve_shape, bbox_x, bbox_y, bbox_width, bbox_height,
-                          stroke_color, stroke_width, stroke_dash_array, z_order):
-        pass
-
-    def draw_rounded_rectangle(self, rectangle_shape, bbox_x, bbox_y, bbox_width, bbox_height,
+    def draw_rounded_rectangle(self, x, y, width, height,
                                stroke_color, stroke_width, stroke_dash_array, fill_color,
-                               offset_x, offset_y, slope, z_order):
+                               corner_radius, offset_x, offset_y, slope, z_order):
         pass
 
     def draw_simple_rectangle(self, bbox_x, bbox_y, bbox_width, bbox_height,
@@ -280,12 +404,12 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                               offset_x, offset_y, slope, z_order):
         pass
 
-    def draw_ellipse(self, ellipse_shape, bbox_x, bbox_y, bbox_width, bbox_height,
+    def draw_ellipse(self, cx, cy, rx, ry,
                      stroke_color, stroke_width, stroke_dash_array, fill_color,
                      offset_x, offset_y, slope, z_order):
         pass
 
-    def draw_polygon(self, polygon_shape, bbox_x, bbox_y, bbox_width, bbox_height,
+    def draw_polygon(self, vertices, width, height,
                      stroke_color, stroke_width, stroke_dash_array, fill_color,
                      offset_x, offset_y, slope, z_order):
         pass
