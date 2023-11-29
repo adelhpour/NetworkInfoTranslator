@@ -1,6 +1,6 @@
-# sbmlplot
+# NetworkInfoTranslator
 
-Sbmlplot is a python tool built on <a href="https://github.com/adelhpour/SBNE">libSBNE</a>, an API which can read or automatically generate, manipulate, and write SBML Layout and Redner information. Using either the already-included or auto-generated information about Layout and Render extensions of an SBML model, sbmlplot helps you:
+NetworkInfoTranslator is a python tool. Using either the already-included or auto-generated information about Layout and Render extensions of an SBML model, NetworkInfoTranslator helps you:
 
 * render a static illustration of the biological network of the SBML model through <a href="https://matplotlib.org/">matplotlib</a>,
     
@@ -8,11 +8,11 @@ Sbmlplot is a python tool built on <a href="https://github.com/adelhpour/SBNE">l
 
 ## How to Use
 
-Sbmplot can be installed from <a href="https://test.pypi.org/">TestPyPI</a> using pip as:
+NetworkInfoTranslator can be installed from <a href="https://test.pypi.org/">TestPyPI</a> using pip as:
 
-`pip install -i https://test.pypi.org/simple/ sbmlplot`
+`pip install -i https://test.pypi.org/simple/ NetworkInfoTranslator`
 
-Once that is done, it is possible to `import sbmlplot` in your script and make use of its methods. 
+Once that is done, it is possible to `import NetworkInfoTranslator` in your script and make use of its methods. 
 
 
 ## A simple script
