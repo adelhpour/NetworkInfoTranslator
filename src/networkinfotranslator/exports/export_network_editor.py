@@ -257,7 +257,6 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
         return geometric_shape
 
     @staticmethod
-    @staticmethod
     def get_curve_features(curve):
         curve_shape = {}
         start_element = curve[0]
