@@ -1,15 +1,15 @@
 from .export_base import NetworkInfoExportBase
 import numpy as np
 import math
+import os.path
+from sys import platform
 
 class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
     def __init__(self):
-        self.export_figure_format = ".png"
         super().__init__()
 
     def reset(self):
         super().reset()
-        self.export_figure_format = ".png"
 
     def add_compartment(self, compartment):
         # compartment
@@ -423,8 +423,30 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                   v_text_anchor, h_text_anchor, zorder):
         pass
 
-    def set_export_figure_format(self, export_figure_format):
-        self.export_figure_format = export_figure_format
-
-    def export(self, file_name):
+    def export(self, file_directory="", file_name="", file_format=""):
         pass
+
+    def get_output_name(self, file_directory, file_name, file_format):
+        if not os.path.isdir(file_directory):
+            if os.path.isfile(file_directory):
+                if not file_name:
+                    if len(os.path.basename(file_directory).split('.')) == 2:
+                        file_name = os.path.basename(file_directory).split('.')[0]
+                    else:
+                        file_name = os.path.basename(file_directory)
+                if not file_format \
+                        and len(file_directory.split('.')) == 2 \
+                        and file_directory.split('.')[1] in [".pdf", ".svg", ".png", "jpg"]:
+                    file_format = file_directory.split('.')[1]
+                file_directory = os.path.dirname(file_directory)
+            else:
+                file_directory = "."
+        if not file_name:
+            file_name = "network"
+        if file_format not in ["pdf", "svg", "png", "jpg"]:
+            file_format = "png"
+
+        if platform == "win32":
+            return file_directory + "\\" + file_name + "." + file_format
+        else:
+            return file_directory + "/" + file_name + "." + file_format
