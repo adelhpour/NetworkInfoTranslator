@@ -4,12 +4,12 @@ import math
 
 class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
     def __init__(self):
-        self.export_figure_format = ".pdf"
+        self.export_figure_format = ".png"
         super().__init__()
 
     def reset(self):
         super().reset()
-        self.export_figure_format = ".pdf"
+        self.export_figure_format = ".png"
 
     def add_compartment(self, compartment):
         # compartment
@@ -66,7 +66,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
 
             # default features
             stroke_color = 'black'
-            stroke_width = '1.0'
+            stroke_width = 1.0
             stroke_dash_array = 'solid'
             fill_color = 'white'
 
@@ -253,7 +253,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
         if 'curve' in list(features.keys()):
             # default features
             stroke_color = 'black'
-            stroke_width = '1.0'
+            stroke_width = 1.0
             stroke_dash_array = 'solid'
 
             if 'graphicalCurve' in list(features.keys()):
