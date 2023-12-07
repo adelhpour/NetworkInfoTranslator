@@ -67,7 +67,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
             # default features
             stroke_color = 'black'
             stroke_width = 1.0
-            stroke_dash_array = 'solid'
+            stroke_dash_array = tuple()
             fill_color = 'white'
 
             if 'graphicalShape' in list(features.keys()):
@@ -160,7 +160,8 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                             position_y = bbox_y
                             dimension_width = bbox_width
                             dimension_height = bbox_height
-                            corner_radius = 0.0
+                            corner_radius_x = 0.0
+                            corner_radius_y = 0.0
 
                             if 'x' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
                                 position_x += features['graphicalShape']['geometricShapes'][gs_index]['x']['abs'] + \
@@ -185,15 +186,15 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                                     dimension_width = features['graphicalShape']['geometricShapes'][gs_index]['ratio'] * bbox_height
                                     position_x += 0.5 * (bbox_width - dimension_width)
                             if 'rx' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
-                                corner_radius = features['graphicalShape']['geometricShapes'][gs_index]['rx']['abs'] + \
+                                corner_radius_x = features['graphicalShape']['geometricShapes'][gs_index]['rx']['abs'] + \
                                                 0.01 * features['graphicalShape']['geometricShapes'][gs_index]['rx']['rel'] * 0.5 * (bbox_width + bbox_height)
                             elif 'ry' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
-                                corner_radius = features['graphicalShape']['geometricShapes'][gs_index]['ry']['abs'] + \
+                                corner_radius_y = features['graphicalShape']['geometricShapes'][gs_index]['ry']['abs'] + \
                                                 0.01 * features['graphicalShape']['geometricShapes'][gs_index]['ry']['rel'] * 0.5 * (bbox_width + bbox_height)
 
                             self.draw_rounded_rectangle(position_x, position_y, dimension_width, dimension_height,
                                                         stroke_color, stroke_width, stroke_dash_array, fill_color,
-                                                        offset_x, offset_y, corner_radius, slope, z_order)
+                                                        offset_x, offset_y, corner_radius_x, corner_radius_y, slope, z_order)
 
                         # draw an ellipse
                         elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'ellipse':
@@ -396,7 +397,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
 
     def draw_rounded_rectangle(self, x, y, width, height,
                                stroke_color, stroke_width, stroke_dash_array, fill_color,
-                               corner_radius, offset_x, offset_y, slope, z_order):
+                               corner_radius_x, corner_radius_y, offset_x, offset_y, slope, z_order):
         pass
 
     def draw_simple_rectangle(self, bbox_x, bbox_y, bbox_width, bbox_height,
@@ -421,9 +422,6 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
     def draw_text(self, position_x, position_y, bbox_width, bbox_height,
                   plain_text, font_color, font_family, font_size, font_style, font_weight,
                   v_text_anchor, h_text_anchor, zorder):
-        pass
-
-    def export(self, file_directory="", file_name="", file_format=""):
         pass
 
     def get_output_name(self, file_directory, file_name, file_format):
