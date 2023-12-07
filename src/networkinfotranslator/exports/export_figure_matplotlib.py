@@ -36,14 +36,14 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
 
     def draw_rounded_rectangle(self, x, y, width, height,
                                stroke_color, stroke_width, stroke_dash_array, fill_color,
-                               corner_radius, offset_x, offset_y, slope, z_order):
+                               corner_radius_x, corner_radius_y, offset_x, offset_y, slope, z_order):
         fancy_box = FancyBboxPatch((x, y), width, height,
                                    edgecolor=self.graph_info.find_color_value(stroke_color, False),
                                    facecolor=self.graph_info.find_color_value(fill_color),
                                    fill=True,
-                                   linewidth=stroke_width, linestyle=stroke_dash_array,
+                                   linewidth=stroke_width,
                                    zorder=z_order, antialiased=True)
-        fancy_box.set_boxstyle("round", rounding_size=corner_radius)
+        fancy_box.set_boxstyle("round", rounding_size=0.5 * (corner_radius_x + corner_radius_y))
         if offset_x or offset_y:
             fancy_box.set_transform(plttransform.Affine2D().
                                     rotate_around(offset_x, offset_y,
@@ -58,11 +58,20 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
     def draw_simple_rectangle(self, x, y, width, height,
                               stroke_color, stroke_width, stroke_dash_array, fill_color,
                               offset_x, offset_y, slope, z_order):
-        rectangle = Rectangle((x, y), width, height, slope * (180.0 / math.pi),
+        rectangle = Rectangle((x, y), width, height,
                               edgecolor=self.graph_info.find_color_value(stroke_color, False),
                               facecolor=self.graph_info.find_color_value(fill_color), fill=True,
-                              linewidth=stroke_width, linestyle=stroke_dash_array,
+                              linewidth=stroke_width,
                               zorder=z_order, antialiased=True)
+        if offset_x or offset_y:
+            rectangle.set_transform(plttransform.Affine2D().
+                                    rotate_around(offset_x, offset_y,
+                                                  slope) + self.sbml_axes.transData)
+        else:
+            rectangle.set_transform(plttransform.Affine2D().
+                                    rotate_around(position_x + 0.5 * width,
+                                                  position_y + 0.5 * height,
+                                                  slope) + self.sbml_axes.transData)
         self.sbml_axes.add_patch(rectangle)
 
     def draw_ellipse(self, cx, cy, rx, ry,
@@ -72,7 +81,7 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
         ellipse = Ellipse((cx, cy), 2 * rx, 2 * ry,
                           edgecolor=self.graph_info.find_color_value(stroke_color, False),
                           facecolor=self.graph_info.find_color_value(fill_color), fill=True,
-                          linewidth=stroke_width, linestyle=stroke_dash_array,
+                          linewidth=stroke_width,
                           zorder=z_order, antialiased=True)
         if offset_x or offset_y:
             ellipse.set_transform(plttransform.Affine2D().rotate_around(offset_x,
@@ -93,7 +102,7 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
             polygon = Polygon(vertices, closed=True,
                               edgecolor=self.graph_info.find_color_value(stroke_color, False),
                               facecolor=self.graph_info.find_color_value(fill_color),
-                              fill=True, linewidth=stroke_width, linestyle=stroke_dash_array,
+                              fill=True, linewidth=stroke_width,
                               antialiased=True)
             polygon.set_transform(
                 plttransform.Affine2D().rotate_around(offset_x, offset_y,
@@ -102,7 +111,7 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
             polygon = Polygon(vertices, closed=True,
                               edgecolor=self.graph_info.find_color_value(stroke_color, False),
                               facecolor=self.graph_info.find_color_value(fill_color),
-                              fill=True, linewidth=stroke_width, linestyle=stroke_dash_array,
+                              fill=True, linewidth=stroke_width,
                               zorder=z_order, antialiased=True)
         self.sbml_axes.add_patch(polygon)
 
@@ -127,7 +136,7 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
             # draw a curve
             curve = PathPatch(Path(vertices, codes),
                               edgecolor=self.graph_info.find_color_value(stroke_color, False),
-                              facecolor='none', linewidth=stroke_width, linestyle=stroke_dash_array,
+                              facecolor='none', linewidth=stroke_width,
                               capstyle='butt', zorder=z_order, antialiased=True)
             self.sbml_axes.add_patch(curve)
 
@@ -135,7 +144,7 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
                    plain_text, font_color, font_family, font_size, font_style, font_weight,
                    v_text_anchor, h_text_anchor, zorder):
         self.sbml_axes.text(x + 0.5 * width, y + 0.5 * height, plain_text,
-                     color=font_color, fontfamily=font_family, fontsize=0.4 * font_size,
+                     color=font_color, fontfamily=font_family, fontsize=0.5 * font_size,
                      fontstyle=font_style, fontweight=font_weight,
                      va=v_text_anchor, ha=h_text_anchor, zorder=zorder)
 
