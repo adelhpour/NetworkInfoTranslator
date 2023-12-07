@@ -68,9 +68,9 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
             self.add_line_ending(libsbmlnetworkeditor.getLineEnding(self.global_render, le_index))
 
     def extract_extents(self, bounding_box):
-        self.extents['minX'] = 0.0
+        self.extents['minX'] = min(self.extents['minX'], bounding_box['x'])
         self.extents['maxX'] = max(self.extents['maxX'], bounding_box['x'] + bounding_box['width'])
-        self.extents['minY'] = 0.0
+        self.extents['minY'] = min(self.extents['minY'], bounding_box['y'])
         self.extents['maxY'] = max(self.extents['maxY'], bounding_box['y'] + bounding_box['height'])
 
     def add_compartment(self, compartment_object):
