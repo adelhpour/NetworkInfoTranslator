@@ -243,6 +243,8 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def extract_species_features(self, species):
         species['features'] = self.extract_go_general_features(species)
+        if species['glyphObject']:
+            self.extract_extents(species['features']['boundingBox'])
 
     def extract_reaction_features(self, reaction):
         reaction['features'] = self.extract_go_general_features(reaction)
