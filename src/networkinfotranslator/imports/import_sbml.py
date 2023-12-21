@@ -29,15 +29,17 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
         self.extract_global_render_info(document)
         self.extract_global_render_features()
         self.extract_local_render_info(document)
+        self.extract_local_render_features()
         self.assign_graphical_object_styles()
 
     def extract_global_render_info(self, document):
-        if not libsbmlnetworkeditor.getNumGlobalRenderInformation(document):
+        if not libsbmlnetworkeditor.getNumGlobalRenderInformation(document) and\
+            not libsbmlnetworkeditor.getNumLocalRenderInformation(self.layout):
             libsbmlnetworkeditor.createDefaultGlobalRenderInformation(document)
         self.global_render = libsbmlnetworkeditor.getGlobalRenderInformation(document)
 
     def extract_local_render_info(self, document):
-        if not libsbmlnetworkeditor.getNumLocalRenderInformation(self.layout):
+        if libsbmlnetworkeditor.getNumGlobalRenderInformation(document):
             libsbmlnetworkeditor.createDefaultLocalRenderInformation(document)
         self.local_render = libsbmlnetworkeditor.getLocalRenderInformation(self.layout)
 
@@ -66,6 +68,12 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
         # get line ending info
         for le_index in range(libsbmlnetworkeditor.getNumLineEndings(self.global_render)):
             self.add_line_ending(libsbmlnetworkeditor.getLineEnding(self.global_render, le_index))
+
+    def extract_local_render_features(self):
+        # get line ending info
+        for le_index in range(libsbmlnetworkeditor.getNumLineEndings(self.local_render)):
+            self.add_line_ending(libsbmlnetworkeditor.getLineEnding(self.local_render, le_index))
+
 
     def extract_extents(self, bounding_box):
         self.extents['minX'] = min(self.extents['minX'], bounding_box['x'])
@@ -243,6 +251,8 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def extract_species_features(self, species):
         species['features'] = self.extract_go_general_features(species)
+        if species['glyphObject']:
+            self.extract_extents(species['features']['boundingBox'])
 
     def extract_reaction_features(self, reaction):
         reaction['features'] = self.extract_go_general_features(reaction)
