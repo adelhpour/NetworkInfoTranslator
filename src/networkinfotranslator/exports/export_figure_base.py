@@ -391,7 +391,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                                                           offset_y=features['endPoint']['y'],
                                                           slope=features['endSlope'], z_order=2)
 
-    def draw_image(self, bbox_x, bbox_y, bbox_width, bbox_height,
+    def draw_image(self, x, y, width, height,
                    offset_x, offset_y, slope, z_order):
         pass
 
