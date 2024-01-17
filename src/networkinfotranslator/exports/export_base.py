@@ -12,6 +12,7 @@ class NetworkInfoExportBase:
 
         # update the features of the entities
         graph_info.extract_entity_features()
+        self.set_extents()
 
         # compartments
         for c in graph_info.compartments:
@@ -24,6 +25,9 @@ class NetworkInfoExportBase:
         # reactions
         for r in graph_info.reactions:
             self.add_reaction(r)
+
+    def set_extents(self):
+        pass
 
     def add_compartment(self, compartment):
         pass
