@@ -1,5 +1,6 @@
 libsbmlnetworkeditor
 matplotlib>=3.4.0
+skia-python
 numpy
 python-libsbml
 webcolors
