@@ -166,14 +166,13 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
     def export(self, file_directory="", file_name="", file_format=""):
         if len(self.sbml_axes.patches):
             self.sbml_axes.set_aspect('equal')
-            self.sbml_figure.set_size_inches(max(1.0, (self.graph_info.extents['maxX'] -
-                                                       self.graph_info.extents['minX']) / 72.0),
-                                             max(1.0, (self.graph_info.extents['maxY'] -
-                                                       self.graph_info.extents['minY']) / 72.0))
+            self.sbml_figure.set_size_inches(
+                self.graph_info.extents['maxX'] - self.graph_info.extents['minX']) / 72.0,
+                self.graph_info.extents['maxY'] - self.graph_info.extents['minY']) / 72.0))
             plt.axis('equal')
             plt.axis('off')
             plt.tight_layout()
 
             self.sbml_figure.savefig(self.get_output_name(file_directory, file_name, file_format), transparent=True,
-                                     dpi=1000)
+                                     dpi=300)
             plt.close('all')
