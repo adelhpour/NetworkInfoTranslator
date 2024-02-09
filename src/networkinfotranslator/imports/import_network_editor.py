@@ -11,8 +11,7 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
     def extract_info(self, graph):
         super().extract_info(graph)
 
-        f =  open(graph)
-        self.graph_info = json.load(f)
+        self.graph_info = graph
         self.extract_extents(self.graph_info)
         self.extract_background_color(self.graph_info)
         self.extract_entities(self.graph_info)
@@ -422,13 +421,13 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
         if 'height' in list(rect_shape.keys()):
             rect_shape_info['height'] = {'abs': rect_shape['height'], 'rel': 0}
 
-        # get corner curvature radius rx
-        if 'rx' in list(rect_shape.keys()):
-            rect_shape_info['rx'] = {'abs': rect_shape['rx'], 'rel': 0}
+        # get corner curvature radius x
+        if 'border-radius-x' in list(rect_shape.keys()):
+            rect_shape_info['rx'] = {'abs': rect_shape['border-radius-x'], 'rel': 0}
 
-        # get corner curvature radius ry
-        if 'ry' in list(rect_shape.keys()):
-            rect_shape_info['ry'] = {'abs': rect_shape['ry'], 'rel': 0}
+        # get corner curvature radius y
+        if 'border-radius-y' in list(rect_shape.keys()):
+            rect_shape_info['ry'] = {'abs': rect_shape['border-radius-y'], 'rel': 0}
 
         return rect_shape_info
 
@@ -441,20 +440,20 @@ class NetworkInfoImportFromNetworkEditor(NetworkInfoImportBase):
             self.add_color(ellipse_shape['fill-color'])
 
         # get position cx
-        if 'cx' in list(ellipse_shape.keys()):
-            ellipse_shape_info['cx'] = {'abs': ellipse_shape['cx'] + offset_x, 'rel': 0}
+        if 'center-x' in list(ellipse_shape.keys()):
+            ellipse_shape_info['cx'] = {'abs': ellipse_shape['center-x'] + offset_x, 'rel': 0}
 
         # get position cy
-        if 'cy' in list(ellipse_shape.keys()):
-            ellipse_shape_info['cy'] = {'abs': ellipse_shape['cy'] + offset_y, 'rel': 0}
+        if 'center-y' in list(ellipse_shape.keys()):
+            ellipse_shape_info['cy'] = {'abs': ellipse_shape['center-y'] + offset_y, 'rel': 0}
 
         # get dimension rx
-        if 'rx' in list(ellipse_shape.keys()):
-            ellipse_shape_info['rx'] = {'abs': ellipse_shape['rx'], 'rel': 0}
+        if 'radius-x' in list(ellipse_shape.keys()):
+            ellipse_shape_info['rx'] = {'abs': ellipse_shape['radius-x'], 'rel': 0}
 
         # get dimension ry
-        if 'ry' in list(ellipse_shape.keys()):
-            ellipse_shape_info['ry'] = {'abs': ellipse_shape['ry'], 'rel': 0}
+        if 'radius-y' in list(ellipse_shape.keys()):
+            ellipse_shape_info['ry'] = {'abs': ellipse_shape['radius-y'], 'rel': 0}
 
         return ellipse_shape_info
 
