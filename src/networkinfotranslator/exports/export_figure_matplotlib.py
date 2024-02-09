@@ -167,8 +167,8 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
         if len(self.sbml_axes.patches):
             self.sbml_axes.set_aspect('equal')
             self.sbml_figure.set_size_inches(
-                self.graph_info.extents['maxX'] - self.graph_info.extents['minX']) / 72.0,
-                self.graph_info.extents['maxY'] - self.graph_info.extents['minY']) / 72.0))
+                (self.graph_info.extents['maxX'] - self.graph_info.extents['minX']) / 72.0,
+                (self.graph_info.extents['maxY'] - self.graph_info.extents['minY']) / 72.0)
             plt.axis('equal')
             plt.axis('off')
             plt.tight_layout()
