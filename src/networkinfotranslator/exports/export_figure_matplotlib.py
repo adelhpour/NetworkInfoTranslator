@@ -175,5 +175,5 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
             plt.tight_layout()
 
             self.sbml_figure.savefig(self.get_output_name(file_directory, file_name, file_format), transparent=True,
-                                     dpi=300)
+                                     dpi=1000)
             plt.close('all')
