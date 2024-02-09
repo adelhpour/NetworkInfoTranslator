@@ -76,7 +76,8 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
             connectable_target_node_title = "Species"
             connectable_target_node_categories = ["Species"]
 
-        return {'name': species_reference['referenceId'] + "_style", 'category': "SpeciesReference",
+        return {'name': species_reference['referenceId'] + "_style" if species_reference['referenceId'] else species_reference['id'] + "_style",
+                'category': "SpeciesReference",
                 'sub-category': species_reference['role'],
                 'connectable-source-node-title': connectable_source_node_title,
                 'connectable-source-node-categories': connectable_source_node_categories,
@@ -292,24 +293,24 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
     def get_ellipse_features(gs, dimensions, offset_x, offset_y):
         ellipse_shape = {'shape': "ellipse"}
         if 'cx' in list(gs.keys()):
-            ellipse_shape['cx'] = gs['cx']['abs'] + 0.01 * gs['cx'][
+            ellipse_shape['center-x'] = gs['cx']['abs'] + 0.01 * gs['cx'][
                 'rel'] * dimensions['width'] + offset_x
         if 'cy' in list(gs.keys()):
-            ellipse_shape['cy'] = gs['cy']['abs'] + 0.01 * gs['cy'][
+            ellipse_shape['center-y'] = gs['cy']['abs'] + 0.01 * gs['cy'][
                 'rel'] * dimensions['height'] + offset_y
         if 'rx' in list(gs.keys()):
-            ellipse_shape['rx'] = gs['rx']['abs'] + 0.01 * gs['rx'][
+            ellipse_shape['radius-x'] = gs['rx']['abs'] + 0.01 * gs['rx'][
                 'rel'] * dimensions['width']
         if 'ry' in list(gs.keys()):
-            ellipse_shape['ry'] = gs['ry']['abs'] + \
+            ellipse_shape['radius-y'] = gs['ry']['abs'] + \
                                   0.01 * gs['ry']['rel'] * dimensions['height']
         if 'ratio' in list(gs.keys()) and gs['ratio'] > 0.0:
             if (dimensions['width'] / dimensions['height']) <= gs['ratio']:
-                ellipse_shape['rx'] = 0.5 * dimensions['width']
-                ellipse_shape['ry'] = (0.5 * dimensions['width'] / gs['ratio'])
+                ellipse_shape['radius-x'] = 0.5 * dimensions['width']
+                ellipse_shape['radius-y'] = (0.5 * dimensions['width'] / gs['ratio'])
             else:
-                ellipse_shape['ry'] = 0.5 * dimensions['height']
-                ellipse_shape['rx'] = gs['ratio'] * 0.5 * dimensions['height']
+                ellipse_shape['radius-y'] = 0.5 * dimensions['height']
+                ellipse_shape['radius-x'] = gs['ratio'] * 0.5 * dimensions['height']
         return ellipse_shape
 
     @staticmethod
@@ -337,10 +338,10 @@ class NetworkInfoExportToNetworkEditor(NetworkInfoExportToJsonBase):
                 rectangle_shape['width'] = gs['ratio'] * dimensions['height']
                 rectangle_shape['x'] += 0.5 * (dimensions['width'] - rectangle_shape['width'])
         if 'rx' in list(gs.keys()):
-            rectangle_shape['rx'] = gs['rx']['abs'] + \
+            rectangle_shape['border-radius-x'] = gs['rx']['abs'] + \
                                     0.01 * gs['rx']['rel'] * 0.5 * dimensions['width']
         if 'ry' in list(gs.keys()):
-            rectangle_shape['ry'] = gs['ry']['abs'] + \
+            rectangle_shape['border-radius-y'] = gs['ry']['abs'] + \
                                     0.01 * gs['ry']['rel'] * 0.5 * dimensions['height']
             return rectangle_shape
 
