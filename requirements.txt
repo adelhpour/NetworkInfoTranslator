@@ -4,3 +4,4 @@ skia-python
 numpy
 python-libsbml
 webcolors
+pillow
