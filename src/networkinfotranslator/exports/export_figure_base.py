@@ -194,7 +194,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
 
                             self.draw_rounded_rectangle(position_x, position_y, dimension_width, dimension_height,
                                                         stroke_color, stroke_width, stroke_dash_array, fill_color,
-                                                        offset_x, offset_y, corner_radius_x, corner_radius_y, slope, z_order)
+                                                        corner_radius_x, corner_radius_y, offset_x, offset_y, slope, z_order)
 
                         # draw an ellipse
                         elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'ellipse':
