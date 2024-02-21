@@ -6,6 +6,7 @@ import skia
 class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
     def __init__(self):
         super().__init__()
+        self.padding = 25
 
     def reset(self):
         super().reset()
@@ -21,15 +22,15 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                               offset_x, offset_y, slope, z_order):
         simple_rectangle = {}
         if abs(offset_x) > 0.001 or abs(offset_y) > 0.001:
-            simple_rectangle['translate'] = {'x': abs(self.graph_info.extents['minX']) + offset_x,
-                                             'y': abs(self.graph_info.extents['minY']) + offset_y}
+            simple_rectangle['translate'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + offset_x,
+                                             'y': abs(self.graph_info.extents['minY']) + self.padding + offset_y}
             simple_rectangle['rotate'] = slope * 180.0 / 3.141592653589793
             simple_rectangle['rectangle'] = skia.Rect(x, y, x + width, y + height)
         else:
-            simple_rectangle['rectangle'] = skia.Rect(abs(self.graph_info.extents['minX']) + x,
-                                  abs(self.graph_info.extents['minY']) + y,
-                                  abs(self.graph_info.extents['minX']) + x + width,
-                                  abs(self.graph_info.extents['minY']) + y + height)
+            simple_rectangle['rectangle'] = skia.Rect(abs(self.graph_info.extents['minX']) + self.padding + x,
+                                  abs(self.graph_info.extents['minY']) + self.padding + y,
+                                  abs(self.graph_info.extents['minX']) + self.padding + x + width,
+                                  abs(self.graph_info.extents['minY']) + self.padding + y + height)
         simple_rectangle['fill'] = self.create_fill_paint(fill_color)
         simple_rectangle['border'] = self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self.simple_rectangles.append(simple_rectangle)
@@ -40,15 +41,15 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                offset_x, offset_y, slope, z_order):
         rounded_rectangle = {}
         if abs(offset_x) > 0.001 or abs(offset_y) > 0.001:
-            rounded_rectangle['translate'] = {'x': abs(self.graph_info.extents['minX']) + offset_x,
-                                             'y': abs(self.graph_info.extents['minY']) + offset_y}
+            rounded_rectangle['translate'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + offset_x,
+                                             'y': abs(self.graph_info.extents['minY']) + self.padding + offset_y}
             rounded_rectangle['rotate'] = slope * 180.0 / 3.141592653589793
             rounded_rectangle['rectangle'] = skia.Rect(x, y, x + width, y + height)
         else:
-            rounded_rectangle['rectangle'] = skia.Rect(abs(self.graph_info.extents['minX']) + x,
-                                  abs(self.graph_info.extents['minY']) + y,
-                                  abs(self.graph_info.extents['minX']) + x + width,
-                                  abs(self.graph_info.extents['minY']) + y + height)
+            rounded_rectangle['rectangle'] = skia.Rect(abs(self.graph_info.extents['minX']) + self.padding + x,
+                                  abs(self.graph_info.extents['minY']) + self.padding + y,
+                                  abs(self.graph_info.extents['minX']) + self.padding + x + width,
+                                  abs(self.graph_info.extents['minY']) + self.padding + y + height)
         rounded_rectangle['border-radius'] = 0.5 * (corner_radius_x +  corner_radius_y)
         rounded_rectangle['fill'] = self.create_fill_paint(fill_color)
         rounded_rectangle['border'] = self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)
@@ -59,15 +60,15 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                      offset_x, offset_y, slope, z_order):
         ellipse = {}
         if abs(offset_x) > 0.001 or abs(offset_y) > 0.001:
-            ellipse['translate'] = {'x': abs(self.graph_info.extents['minX']) + offset_x,
-                                              'y': abs(self.graph_info.extents['minY']) + offset_y}
+            ellipse['translate'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + offset_x,
+                                              'y': abs(self.graph_info.extents['minY']) + self.padding + offset_y}
             ellipse['rotate'] = slope * 180.0 / 3.141592653589793
             ellipse['rectangle'] = skia.Rect(cx - rx, cy - ry, cx + rx, cy + ry)
         else:
-            ellipse['rectangle'] = skia.Rect(abs(self.graph_info.extents['minX']) + cx - rx,
-                                  abs(self.graph_info.extents['minY']) + cy - ry,
-                                  abs(self.graph_info.extents['minX']) + cx + rx,
-                                  abs(self.graph_info.extents['minY']) + cy + ry)
+            ellipse['rectangle'] = skia.Rect(abs(self.graph_info.extents['minX']) + self.padding + cx - rx,
+                                  abs(self.graph_info.extents['minY']) + self.padding + cy - ry,
+                                  abs(self.graph_info.extents['minX']) + self.padding + cx + rx,
+                                  abs(self.graph_info.extents['minY']) + self.padding + cy + ry)
         ellipse['fill'] = self.create_fill_paint(fill_color)
         ellipse['border'] = self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self.ellipses.append(ellipse)
@@ -77,21 +78,21 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                      offset_x, offset_y, slope, z_order):
         polygon = {}
         if abs(offset_x) > 0.001 or abs(offset_y) > 0.001:
-            polygon['translate'] = {'x': abs(self.graph_info.extents['minX']) + offset_x,
-                                    'y': abs(self.graph_info.extents['minY']) + offset_y}
+            polygon['translate'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + offset_x,
+                                    'y': abs(self.graph_info.extents['minY']) + self.padding + offset_y}
             polygon['rotate'] = slope * 180.0 / 3.141592653589793
-            polygon['move-to-vertex'] = {'x': vertices[0][0] - width, 'y': vertices[0][1] - 0.5 * height}
+            polygon['move-to-vertex'] = {'x':  vertices[0][0] - width, 'y': vertices[0][1] - 0.5 * height}
             line_to_vertices = []
             for i in range(1, len(vertices)):
                 line_to_vertices.append({'x': vertices[i][0] - width, 'y': vertices[i][1] - 0.5 * height})
             polygon['line-to-vertices'] = line_to_vertices
         else:
-            polygon['move-to-vertex'] = {'x': abs(self.graph_info.extents['minX']) + vertices[0][0] - width,
-                                         'y': abs(self.graph_info.extents['minY']) + vertices[0][1] - 0.5 * height}
+            polygon['move-to-vertex'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + vertices[0][0] - width,
+                                         'y': abs(self.graph_info.extents['minY']) + self.padding + vertices[0][1] - 0.5 * height}
             for i in range(1, len(vertices)):
                 line_to_vertices = []
-                line_to_vertices.append({'x': abs(self.graph_info.extents['minX']) + vertices[i][0] - width,
-                                         'y': abs(self.graph_info.extents['minY']) + vertices[i][1] - 0.5 * height})
+                line_to_vertices.append({'x': abs(self.graph_info.extents['minX']) + self.padding + vertices[i][0] - width,
+                                         'y': abs(self.graph_info.extents['minY']) + self.padding + vertices[i][1] - 0.5 * height})
                 polygon['line-to-vertices'] = line_to_vertices
 
         polygon['fill'] = self.create_fill_paint(fill_color)
@@ -102,18 +103,18 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                    z_order):
         vertices = []
         for v_index in range(len(curve)):
-            vertex = {'move-to': {'x': abs(self.graph_info.extents['minX']) + curve[v_index]['startX'],
-                                         'y': abs(self.graph_info.extents['minY']) + curve[v_index]['startY']}}
+            vertex = {'move-to': {'x': abs(self.graph_info.extents['minX']) + self.padding + curve[v_index]['startX'],
+                                         'y': abs(self.graph_info.extents['minY']) + self.padding + curve[v_index]['startY']}}
             if "basePoint1X" in list(curve[v_index].keys()) and "basePoint1Y" in list(curve[v_index].keys()):
-                vertex['cubic-to'] = {'b1x': abs(self.graph_info.extents['minX']) + curve[v_index]['basePoint1X'],
-                                            'b1y': abs(self.graph_info.extents['minY']) + curve[v_index]['basePoint1Y'],
-                                            'b2x': abs(self.graph_info.extents['minX']) + curve[v_index]['basePoint2X'],
-                                            'b2y': abs(self.graph_info.extents['minY']) + curve[v_index]['basePoint2Y'],
-                                            'x': abs(self.graph_info.extents['minX']) + curve[v_index]['endX'],
-                                            'y': abs(self.graph_info.extents['minY']) + curve[v_index]['endY']}
+                vertex['cubic-to'] = {'b1x': abs(self.graph_info.extents['minX']) + self.padding + curve[v_index]['basePoint1X'],
+                                            'b1y': abs(self.graph_info.extents['minY']) + self.padding + curve[v_index]['basePoint1Y'],
+                                            'b2x': abs(self.graph_info.extents['minX']) + self.padding + curve[v_index]['basePoint2X'],
+                                            'b2y': abs(self.graph_info.extents['minY']) + self.padding + curve[v_index]['basePoint2Y'],
+                                            'x': abs(self.graph_info.extents['minX']) + self.padding + curve[v_index]['endX'],
+                                            'y': abs(self.graph_info.extents['minY']) + self.padding + curve[v_index]['endY']}
             else:
-                vertex['line-to'] = {'x': abs(self.graph_info.extents['minX']) + curve[v_index]['endX'],
-                                     'y': abs(self.graph_info.extents['minY']) + curve[v_index]['endY']}
+                vertex['line-to'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + curve[v_index]['endX'],
+                                     'y': abs(self.graph_info.extents['minY']) + self.padding + curve[v_index]['endY']}
             vertices.append(vertex)
         self.curves.append({'vertices': vertices,
                             'border': self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)})
@@ -130,8 +131,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         text_height = text_font.getSize()
         text['text-paint'] = self.create_text_paint(font_color)
         text['text'] = skia.TextBlob(plain_text, text_font)
-        text['x'] = abs(self.graph_info.extents['minX']) + x + 0.5 * width - 0.5 * text_width
-        text['y'] = abs(self.graph_info.extents['minY']) + y + 0.5 * height + 0.4 * text_height
+        text['x'] = abs(self.graph_info.extents['minX']) + self.padding + x + 0.5 * width - 0.5 * text_width
+        text['y'] = abs(self.graph_info.extents['minY']) + self.padding + y + 0.5 * height + 0.4 * text_height
         self.texts.append(text)
 
     def create_fill_paint(self, fill_color):
@@ -222,8 +223,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                     canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
 
     def _export_as(self, file_directory, file_name, file_format):
-        surface = skia.Surface(int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX'] + 50),
-                                    int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY']))
+        surface = skia.Surface(int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX'] + 2 * self.padding),
+                                    int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY'] + 2 * self.padding))
         with surface as canvas:
             for simple_rectangle in self.simple_rectangles:
                 if 'translate' in list(simple_rectangle.keys()):
