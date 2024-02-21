@@ -1,6 +1,7 @@
 from .export_figure_base import NetworkInfoExportToFigureBase
 import webcolors
 import skia
+from PIL import Image as PIL_Image
 
 
 class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
@@ -31,8 +32,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minY']) + self.padding + y,
                                   abs(self.graph_info.extents['minX']) + self.padding + x + width,
                                   abs(self.graph_info.extents['minY']) + self.padding + y + height)
-        simple_rectangle['fill'] = self.create_fill_paint(fill_color)
-        simple_rectangle['border'] = self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)
+        simple_rectangle['fill'] = self._create_fill_paint(fill_color)
+        simple_rectangle['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self.simple_rectangles.append(simple_rectangle)
 
     def draw_rounded_rectangle(self, x, y, width, height,
@@ -51,8 +52,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minX']) + self.padding + x + width,
                                   abs(self.graph_info.extents['minY']) + self.padding + y + height)
         rounded_rectangle['border-radius'] = 0.5 * (corner_radius_x +  corner_radius_y)
-        rounded_rectangle['fill'] = self.create_fill_paint(fill_color)
-        rounded_rectangle['border'] = self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)
+        rounded_rectangle['fill'] = self._create_fill_paint(fill_color)
+        rounded_rectangle['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self.rounded_rectangles.append(rounded_rectangle)
 
     def draw_ellipse(self, cx, cy, rx, ry,
@@ -69,8 +70,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minY']) + self.padding + cy - ry,
                                   abs(self.graph_info.extents['minX']) + self.padding + cx + rx,
                                   abs(self.graph_info.extents['minY']) + self.padding + cy + ry)
-        ellipse['fill'] = self.create_fill_paint(fill_color)
-        ellipse['border'] = self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)
+        ellipse['fill'] = self._create_fill_paint(fill_color)
+        ellipse['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self.ellipses.append(ellipse)
 
     def draw_polygon(self, vertices, width, height,
@@ -95,8 +96,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                          'y': abs(self.graph_info.extents['minY']) + self.padding + vertices[i][1] - 0.5 * height})
                 polygon['line-to-vertices'] = line_to_vertices
 
-        polygon['fill'] = self.create_fill_paint(fill_color)
-        polygon['border'] = self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)
+        polygon['fill'] = self._create_fill_paint(fill_color)
+        polygon['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self.polygons.append(polygon)
 
     def draw_curve(self, curve, stroke_color, stroke_width, stroke_dash_array,
@@ -117,7 +118,7 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                      'y': abs(self.graph_info.extents['minY']) + self.padding + curve[v_index]['endY']}
             vertices.append(vertex)
         self.curves.append({'vertices': vertices,
-                            'border': self.create_border_paint(stroke_color, stroke_width, stroke_dash_array)})
+                            'border': self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)})
 
     def draw_text(self, x, y, width, height,
                    plain_text, font_color, font_family, font_size, font_style, font_weight,
@@ -129,36 +130,39 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
             text_font = skia.Font(None, font_size)
         text_width = text_font.measureText(plain_text)
         text_height = text_font.getSize()
-        text['text-paint'] = self.create_text_paint(font_color)
+        text['text-paint'] = self._create_text_paint(font_color)
         text['text'] = skia.TextBlob(plain_text, text_font)
         text['x'] = abs(self.graph_info.extents['minX']) + self.padding + x + 0.5 * width - 0.5 * text_width
         text['y'] = abs(self.graph_info.extents['minY']) + self.padding + y + 0.5 * height + 0.4 * text_height
         self.texts.append(text)
-
-    def create_fill_paint(self, fill_color):
-        return skia.Paint(Color=self.get_skia_color(fill_color), Style=skia.Paint.kFill_Style, AntiAlias=True)
-
-    def create_border_paint(self, stroke_color, stroke_width, stroke_dash_array):
-        if len(stroke_dash_array) and len(stroke_dash_array) % 2 == 0:
-            return skia.Paint(Color=self.get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
-                               PathEffect=skia.DashPathEffect.Make(list(stroke_dash_array), 0.0),
-                               StrokeWidth=stroke_width, AntiAlias=True)
-        else:
-            return skia.Paint(Color=self.get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
-                               StrokeWidth=stroke_width, AntiAlias=True)
-
-    def create_text_paint(self, font_color):
-        return skia.Paint(Color=self.get_skia_color(font_color), AntiAlias=True)
-
-    def get_skia_color(self, color_name):
-        rgb_color = webcolors.hex_to_rgb(self.graph_info.find_color_value(color_name, False))
-        return skia.Color(rgb_color.red, rgb_color.green, rgb_color.blue)
 
     def export(self, file_directory="", file_name="", file_format=""):
         if file_format == "pdf":
             self._export_as_pdf(file_directory, file_name)
         else:
             self._export_as(file_directory, file_name, file_format)
+
+    def export_as_pil_image(self):
+        return PIL_Image.fromarray(self._get_image().convert(alphaType=skia.kUnpremul_AlphaType))
+
+    def _create_fill_paint(self, fill_color):
+        return skia.Paint(Color=self._get_skia_color(fill_color), Style=skia.Paint.kFill_Style, AntiAlias=True)
+
+    def _create_border_paint(self, stroke_color, stroke_width, stroke_dash_array):
+        if len(stroke_dash_array) and len(stroke_dash_array) % 2 == 0:
+            return skia.Paint(Color=self._get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
+                               PathEffect=skia.DashPathEffect.Make(list(stroke_dash_array), 0.0),
+                               StrokeWidth=stroke_width, AntiAlias=True)
+        else:
+            return skia.Paint(Color=self._get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
+                               StrokeWidth=stroke_width, AntiAlias=True)
+
+    def _create_text_paint(self, font_color):
+        return skia.Paint(Color=self._get_skia_color(font_color), AntiAlias=True)
+
+    def _get_skia_color(self, color_name):
+        rgb_color = webcolors.hex_to_rgb(self.graph_info.find_color_value(color_name, False))
+        return skia.Color(rgb_color.red, rgb_color.green, rgb_color.blue)
 
     def _export_as_pdf(self, file_directory, file_name):
         stream = skia.FILEWStream(self.get_output_name(file_directory, file_name, "pdf"))
@@ -223,8 +227,16 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                     canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
 
     def _export_as(self, file_directory, file_name, file_format):
-        surface = skia.Surface(int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX'] + 2 * self.padding),
-                                    int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY'] + 2 * self.padding))
+        image = self._get_image()
+        if file_format == "jpg":
+            image.save(self.get_output_name(file_directory, file_name, "jpg"), skia.kJPEG)
+        else:
+            image.save(self.get_output_name(file_directory, file_name, "png"), skia.kPNG)
+
+    def _get_image(self):
+        surface = skia.Surface(
+            int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX'] + 2 * self.padding),
+            int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY'] + 2 * self.padding))
         with surface as canvas:
             for simple_rectangle in self.simple_rectangles:
                 if 'translate' in list(simple_rectangle.keys()):
@@ -283,8 +295,6 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
             for text in self.texts:
                 canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
 
-        image = surface.makeImageSnapshot()
-        if file_format == "jpg":
-            image.save(self.get_output_name(file_directory, file_name, "jpg"), skia.kJPEG)
-        else:
-            image.save(self.get_output_name(file_directory, file_name, "png"), skia.kPNG)
+        return surface.makeImageSnapshot()
+
+
