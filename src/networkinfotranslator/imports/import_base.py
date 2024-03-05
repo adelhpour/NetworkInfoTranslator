@@ -1,6 +1,3 @@
-import matplotlib.colors as mcolors
-
-
 class NetworkInfoImportBase:
     def __init__(self):
         self.compartments = []
@@ -56,6 +53,7 @@ class NetworkInfoImportBase:
             for gradient in self.gradients:
                 if color_id == gradient['id'] and 'stops' in list(gradient['features'].keys()):
                     stop_colors = []
+                    """
                     for stop in gradient['features']['stops']:
                         if 'color' in list(stop.keys()):
                             stop_colors.append(mcolors.to_rgb(
@@ -63,6 +61,7 @@ class NetworkInfoImportBase:
                                                  stop['color'])))
                     if len(stop_colors):
                         return mcolors.to_hex(np.average(np.array(stop_colors), axis=0).tolist())
+                    """
 
         # search among the colors
         for color in self.colors:
