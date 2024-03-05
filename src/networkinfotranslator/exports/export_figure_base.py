@@ -11,6 +11,9 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
     def reset(self):
         super().reset()
 
+    def set_background(self, graph_info):
+        self.draw_background_canvas(graph_info.background_color)
+
     def add_compartment(self, compartment):
         # compartment
         if 'features' in list(compartment.keys()):
@@ -19,27 +22,27 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
         if 'texts' in list(compartment.keys()):
             for text in compartment['texts']:
                 if 'features' in list(text.keys()):
-                    self.add_text_to_scene(text['features'])
+                    self.add_text_to_scene(text['features'], z_order=1)
 
     def add_species(self, species):
         # species
         if 'features' in list(species.keys()):
-            self.add_graphical_shape_to_scene(species['features'], z_order=4)
+            self.add_graphical_shape_to_scene(species['features'], z_order=5)
         # species text
         if 'texts' in list(species.keys()):
             for text in species['texts']:
                 if 'features' in list(text.keys()):
-                    self.add_text_to_scene(text['features'])
+                    self.add_text_to_scene(text['features'], z_order=6)
 
     def add_reaction(self, reaction):
         # reaction
         if 'features' in list(reaction.keys()):
             # reaction curve
             if 'curve' in list(reaction['features']):
-                self.add_curve_to_scene(reaction['features'], z_order=3)
+                self.add_curve_to_scene(reaction['features'], z_order=4)
             # reaction graphical shape
             elif 'boundingBox' in list(reaction['features']):
-                self.add_graphical_shape_to_scene(reaction['features'], z_order=3)
+                self.add_graphical_shape_to_scene(reaction['features'], z_order=4)
 
         # species references
         if 'speciesReferences' in list(reaction.keys()):
@@ -49,7 +52,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
     def add_species_reference(self, species_reference):
         if 'features' in list(species_reference.keys()):
             # species reference
-            self.add_curve_to_scene(species_reference['features'], z_order=1)
+            self.add_curve_to_scene(species_reference['features'], z_order=2)
 
             # line endings
             self.add_line_endings_to_scene(species_reference['features'])
@@ -69,14 +72,13 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
             stroke_width = 1.0
             stroke_dash_array = tuple()
             fill_color = 'white'
-
             if 'graphicalShape' in list(features.keys()):
                 if 'strokeColor' in list(features['graphicalShape'].keys()):
                     stroke_color = features['graphicalShape']['strokeColor']
                 if 'strokeWidth' in list(features['graphicalShape'].keys()):
                     stroke_width = features['graphicalShape']['strokeWidth']
                 if 'strokeDashArray' in list(features['graphicalShape'].keys()):
-                    stroke_dash_array = (0, features['graphicalShape']['strokeDashArray'])
+                    stroke_dash_array = features['graphicalShape']['strokeDashArray']
                 if 'fillColor' in list(features['graphicalShape'].keys()):
                     fill_color = features['graphicalShape']['fillColor']
 
@@ -87,8 +89,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                         if 'strokeWidth' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
                             stroke_width = features['graphicalShape']['geometricShapes'][gs_index]['strokeWidth']
                         if 'strokeDashArray' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
-                            stroke_dash_array = (
-                            0, features['graphicalShape']['geometricShapes'][gs_index]['strokeDashArray'])
+                            stroke_dash_array = features['graphicalShape']['geometricShapes'][gs_index]['strokeDashArray']
                         if 'fillColor' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
                             fill_color = features['graphicalShape']['geometricShapes'][gs_index]['fillColor']
 
@@ -230,16 +231,21 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                         elif features['graphicalShape']['geometricShapes'][gs_index]['shape'] == 'polygon':
                             if 'vertices' in list(features['graphicalShape']['geometricShapes'][gs_index].keys()):
                                 vertices = np.empty((0, 2))
+                                origin_x = 0.0
+                                origin_y = 0.0
+                                if not offset_x and not offset_y:
+                                    origin_x = bbox_x
+                                    origin_y = bbox_y
                                 for v_index in range(len(features['graphicalShape']['geometricShapes'][gs_index]['vertices'])):
                                     vertices = np.append(vertices,
                                                          np.array([[features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
                                                                     ['renderPointX']['abs'] +
                                                                     0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
-                                                                    ['renderPointX']['rel'] * bbox_width,
+                                                                    ['renderPointX']['rel'] * bbox_width + origin_x,
                                                                     features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
                                                                     ['renderPointY']['abs'] +
                                                                     0.01 * features['graphicalShape']['geometricShapes'][gs_index]['vertices'][v_index]
-                                                                    ['renderPointY']['rel'] * bbox_height]]), axis=0)
+                                                                    ['renderPointY']['rel'] * bbox_height + origin_y]]), axis=0)
                                 self.draw_polygon(vertices, bbox_width, bbox_height,
                                               stroke_color, stroke_width, stroke_dash_array, fill_color,
                                               offset_x, offset_y, slope, z_order)
@@ -264,11 +270,11 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                     stroke_width = features['graphicalCurve']['strokeWidth']
                 if 'strokeDashArray' in list(features['graphicalCurve'].keys()) \
                         and not features['graphicalCurve']['strokeDashArray'] == 'solid':
-                    stroke_dash_array = (0, features['graphicalCurve']['strokeDashArray'])
+                    stroke_dash_array = features['graphicalCurve']['strokeDashArray']
 
             self.draw_curve(features['curve'], stroke_color, stroke_width, stroke_dash_array, z_order)
 
-    def add_text_to_scene(self, features):
+    def add_text_to_scene(self, features, z_order=5):
         if 'plainText' in list(features.keys()) and 'boundingBox' in list(features.keys()):
             plain_text = features['plainText']
             bbox_x = features['boundingBox']['x']
@@ -279,7 +285,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
             # default features
             font_color = 'black'
             font_family = 'monospace'
-            font_size = '12.0'
+            font_size = 12.0
             font_style = 'normal'
             font_weight = 'normal'
             h_text_anchor = 'center'
@@ -353,11 +359,11 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
 
                         self.draw_text(position_x, position_y, bbox_width, bbox_height,
                                        plain_text, font_color, font_family, font_size, font_style, font_weight,
-                                       v_text_anchor, h_text_anchor, 5)
+                                       v_text_anchor, h_text_anchor, z_order)
                 else:
                     self.draw_text(bbox_x, bbox_y, bbox_width, bbox_height,
                                    plain_text, font_color, font_family, font_size, font_style, font_weight,
-                                   v_text_anchor, h_text_anchor, 5)
+                                   v_text_anchor, h_text_anchor, z_order)
 
     def add_line_endings_to_scene(self, features):
         if 'graphicalCurve' in list(features.keys()) and 'heads' in list(features['graphicalCurve'].keys()):
@@ -369,12 +375,12 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                             and not line_ending['features']['enableRotation']:
                         self.add_graphical_shape_to_scene(line_ending['features'],
                                                           offset_x=features['startPoint']['x'],
-                                                          offset_y=features['startPoint']['y'], z_order=2)
+                                                          offset_y=features['startPoint']['y'], z_order=3)
                     else:
                         self.add_graphical_shape_to_scene(line_ending['features'],
                                                           offset_x=features['startPoint']['x'],
                                                           offset_y=features['startPoint']['y'],
-                                                          slope=features['startSlope'], z_order=2)
+                                                          slope=features['startSlope'], z_order=3)
 
             # draw end head
             if 'end' in list(features['graphicalCurve']['heads'].keys()):
@@ -384,12 +390,15 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                             and not line_ending['features']['enableRotation']:
                         self.add_graphical_shape_to_scene(ax, line_ending['features'],
                                                           offset_x=features['endPoint']['x'],
-                                                          offset_y=features['endPoint']['y'], z_order=2)
+                                                          offset_y=features['endPoint']['y'], z_order=3)
                     else:
                         self.add_graphical_shape_to_scene(line_ending['features'],
                                                           offset_x=features['endPoint']['x'],
                                                           offset_y=features['endPoint']['y'],
-                                                          slope=features['endSlope'], z_order=2)
+                                                          slope=features['endSlope'], z_order=3)
+
+    def draw_background_canvas(self, background_color):
+        pass
 
     def draw_image(self, x, y, width, height,
                    offset_x, offset_y, slope, z_order):

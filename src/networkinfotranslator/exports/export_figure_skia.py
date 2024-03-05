@@ -2,21 +2,39 @@ from .export_figure_base import NetworkInfoExportToFigureBase
 import webcolors
 import skia
 from PIL import Image as PIL_Image
+from PIL import ImageColor
 
 
 class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
     def __init__(self):
         super().__init__()
         self.padding = 25
+        self.background_canvas = {}
+        self.layers = []
 
     def reset(self):
         super().reset()
-        self.simple_rectangles = []
-        self.rounded_rectangles = []
-        self.ellipses = []
-        self.polygons = []
-        self.curves = []
-        self.texts = []
+        self.background_canvas = {}
+        self.layers = []
+
+    def _get_layer(self, layer_index):
+        for layer in self.layers:
+            if layer_index == layer.layer_index:
+                return layer
+        new_layer = Layer(layer_index)
+        self.layers.append(new_layer)
+        return new_layer
+
+    @staticmethod
+    def sort_layers(layers):
+        layers.sort(key=lambda x: x.layer_index)
+
+    def draw_background_canvas(self, background_color):
+        self.background_canvas['rectangle'] = skia.Rect(self.graph_info.extents['minX'],
+                                                        self.graph_info.extents['minY'],
+                                                        self.graph_info.extents['maxX'] + 2 * self.padding,
+                                                        self.graph_info.extents['maxY'] + 2 * self.padding)
+        self.background_canvas['fill'] = self._create_fill_paint(background_color)
 
     def draw_simple_rectangle(self, x, y, width, height,
                               stroke_color, stroke_width, stroke_dash_array, fill_color,
@@ -34,7 +52,7 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minY']) + self.padding + y + height)
         simple_rectangle['fill'] = self._create_fill_paint(fill_color)
         simple_rectangle['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
-        self.simple_rectangles.append(simple_rectangle)
+        self._get_layer(z_order).simple_rectangles.append(simple_rectangle)
 
     def draw_rounded_rectangle(self, x, y, width, height,
                                stroke_color, stroke_width, stroke_dash_array, fill_color,
@@ -54,7 +72,7 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         rounded_rectangle['border-radius'] = 0.5 * (corner_radius_x +  corner_radius_y)
         rounded_rectangle['fill'] = self._create_fill_paint(fill_color)
         rounded_rectangle['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
-        self.rounded_rectangles.append(rounded_rectangle)
+        self._get_layer(z_order).rounded_rectangles.append(rounded_rectangle)
 
     def draw_ellipse(self, cx, cy, rx, ry,
                      stroke_color, stroke_width, stroke_dash_array, fill_color,
@@ -64,6 +82,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
             ellipse['translate'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + offset_x,
                                               'y': abs(self.graph_info.extents['minY']) + self.padding + offset_y}
             ellipse['rotate'] = slope * 180.0 / 3.141592653589793
+            cx -= offset_x
+            cy -= offset_y
             ellipse['rectangle'] = skia.Rect(cx - rx, cy - ry, cx + rx, cy + ry)
         else:
             ellipse['rectangle'] = skia.Rect(abs(self.graph_info.extents['minX']) + self.padding + cx - rx,
@@ -72,33 +92,34 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minY']) + self.padding + cy + ry)
         ellipse['fill'] = self._create_fill_paint(fill_color)
         ellipse['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
-        self.ellipses.append(ellipse)
+        self._get_layer(z_order).ellipses.append(ellipse)
 
     def draw_polygon(self, vertices, width, height,
                      stroke_color, stroke_width, stroke_dash_array, fill_color,
                      offset_x, offset_y, slope, z_order):
-        polygon = {}
-        if abs(offset_x) > 0.001 or abs(offset_y) > 0.001:
-            polygon['translate'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + offset_x,
-                                    'y': abs(self.graph_info.extents['minY']) + self.padding + offset_y}
-            polygon['rotate'] = slope * 180.0 / 3.141592653589793
-            polygon['move-to-vertex'] = {'x':  vertices[0][0] - width, 'y': vertices[0][1] - 0.5 * height}
-            line_to_vertices = []
-            for i in range(1, len(vertices)):
-                line_to_vertices.append({'x': vertices[i][0] - width, 'y': vertices[i][1] - 0.5 * height})
-            polygon['line-to-vertices'] = line_to_vertices
-        else:
-            polygon['move-to-vertex'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + vertices[0][0] - width,
-                                         'y': abs(self.graph_info.extents['minY']) + self.padding + vertices[0][1] - 0.5 * height}
-            for i in range(1, len(vertices)):
+        if len(vertices):
+            polygon = {}
+            if abs(offset_x) > 0.001 or abs(offset_y) > 0.001:
+                polygon['translate'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + offset_x,
+                                        'y': abs(self.graph_info.extents['minY']) + self.padding + offset_y}
+                polygon['rotate'] = slope * 180.0 / 3.141592653589793
+                polygon['move-to-vertex'] = {'x':  vertices[0][0] - width, 'y': vertices[0][1] - 0.5 * height}
                 line_to_vertices = []
-                line_to_vertices.append({'x': abs(self.graph_info.extents['minX']) + self.padding + vertices[i][0] - width,
-                                         'y': abs(self.graph_info.extents['minY']) + self.padding + vertices[i][1] - 0.5 * height})
+                for i in range(1, len(vertices)):
+                    line_to_vertices.append({'x': vertices[i][0] - width, 'y': vertices[i][1] - 0.5 * height})
+                polygon['line-to-vertices'] = line_to_vertices
+            else:
+                polygon['move-to-vertex'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + vertices[0][0],
+                                             'y': abs(self.graph_info.extents['minY']) + self.padding + vertices[0][1]}
+                line_to_vertices = []
+                for i in range(1, len(vertices)):
+                    line_to_vertices.append({'x': abs(self.graph_info.extents['minX']) + self.padding + vertices[i][0],
+                                             'y': abs(self.graph_info.extents['minY']) + self.padding + vertices[i][1]})
                 polygon['line-to-vertices'] = line_to_vertices
 
-        polygon['fill'] = self._create_fill_paint(fill_color)
-        polygon['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
-        self.polygons.append(polygon)
+            polygon['fill'] = self._create_fill_paint(fill_color)
+            polygon['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
+            self._get_layer(z_order).polygons.append(polygon)
 
     def draw_curve(self, curve, stroke_color, stroke_width, stroke_dash_array,
                    z_order):
@@ -117,12 +138,12 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                 vertex['line-to'] = {'x': abs(self.graph_info.extents['minX']) + self.padding + curve[v_index]['endX'],
                                      'y': abs(self.graph_info.extents['minY']) + self.padding + curve[v_index]['endY']}
             vertices.append(vertex)
-        self.curves.append({'vertices': vertices,
+        self._get_layer(z_order).curves.append({'vertices': vertices,
                             'border': self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)})
 
     def draw_text(self, x, y, width, height,
                    plain_text, font_color, font_family, font_size, font_style, font_weight,
-                   v_text_anchor, h_text_anchor, zorder):
+                   v_text_anchor, h_text_anchor, z_order):
         text = {}
         text_font = skia.Font(None, font_size)
         while text_font.measureText(plain_text) > width:
@@ -134,7 +155,7 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         text['text'] = skia.TextBlob(plain_text, text_font)
         text['x'] = abs(self.graph_info.extents['minX']) + self.padding + x + 0.5 * width - 0.5 * text_width
         text['y'] = abs(self.graph_info.extents['minY']) + self.padding + y + 0.5 * height + 0.4 * text_height
-        self.texts.append(text)
+        self._get_layer(z_order).texts.append(text)
 
     def export(self, file_directory="", file_name="", file_format=""):
         if file_format == "pdf":
@@ -161,70 +182,72 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         return skia.Paint(Color=self._get_skia_color(font_color), AntiAlias=True)
 
     def _get_skia_color(self, color_name):
-        rgb_color = webcolors.hex_to_rgb(self.graph_info.find_color_value(color_name, False))
-        return skia.Color(rgb_color.red, rgb_color.green, rgb_color.blue)
+        rgb_color = ImageColor.getrgb(self.graph_info.find_color_value(color_name, False))
+        return skia.Color(rgb_color[0], rgb_color[1], rgb_color[2])
 
     def _export_as_pdf(self, file_directory, file_name):
         stream = skia.FILEWStream(self.get_output_name(file_directory, file_name, "pdf"))
         with skia.PDF.MakeDocument(stream) as document:
-            with document.page(int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX']),
-                               int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY'])) as canvas:
-                for simple_rectangle in self.simple_rectangles:
-                    if 'translate' in list(simple_rectangle.keys()):
-                        canvas.translate(simple_rectangle['translate']['x'], simple_rectangle['translate']['y'])
-                        canvas.rotate(simple_rectangle['rotate'])
-                    canvas.drawRoundRect(simple_rectangle["rectangle"], rounded_rectangle["border"])
-                    canvas.drawRoundRect(simple_rectangle["rectangle"], rounded_rectangle["fill"])
-                    if 'translate' in list(simple_rectangle.keys()):
-                        canvas.rotate(-simple_rectangle['rotate'])
-                        canvas.translate(-simple_rectangle['translate']['x'], -simple_rectangle['translate']['y'])
-                for rounded_rectangle in self.rounded_rectangles:
-                    if 'translate' in list(rounded_rectangle.keys()):
-                        canvas.translate(rounded_rectangle['translate']['x'], rounded_rectangle['translate']['y'])
-                        canvas.rotate(rounded_rectangle['rotate'])
-                    canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
-                                         rounded_rectangle["border-radius"], rounded_rectangle["border"])
-                    canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
-                                         rounded_rectangle["border-radius"], rounded_rectangle["fill"])
-                    if 'translate' in list(rounded_rectangle.keys()):
-                        canvas.rotate(-rounded_rectangle['rotate'])
-                        canvas.translate(-rounded_rectangle['translate']['x'], -rounded_rectangle['translate']['y'])
-                for ellipse in self.ellipses:
-                    if 'translate' in list(ellipse.keys()):
-                        canvas.translate(ellipse['translate']['x'], ellipse['translate']['y'])
-                        canvas.rotate(ellipse['rotate'])
-                    canvas.drawOval(ellipse["rectangle"], ellipse["border"])
-                    canvas.drawOval(ellipse["rectangle"], ellipse["fill"])
-                    if 'translate' in list(rounded_rectangle.keys()):
-                        canvas.rotate(-ellipse['rotate'])
-                        canvas.translate(-ellipse['translate']['x'], -ellipse['translate']['y'])
-                for polygon in self.polygons:
-                    if 'translate' in list(polygon.keys()):
-                        canvas.translate(polygon['translate']['x'], polygon['translate']['y'])
-                        canvas.rotate(polygon['rotate'])
-                    path = skia.Path()
-                    path.moveTo(polygon['move-to-vertex']['x'], polygon['move-to-vertex']['y'])
-                    for vertex in polygon['line-to-vertices']:
-                        path.lineTo(vertex['x'], vertex['y'])
-                    path.close()
-                    canvas.drawPath(path, polygon["border"])
-                    canvas.drawPath(path, polygon["fill"])
-                    if 'translate' in list(polygon.keys()):
-                        canvas.rotate(-polygon['rotate'])
-                        canvas.translate(-polygon['translate']['x'], -polygon['translate']['y'])
-                for curve in self.curves:
-                    for vertex in curve['vertices']:
+            with document.page(int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX']) + + 2 * self.padding,
+                               int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY']) + + 2 * self.padding) as canvas:
+                self.sort_layers(self.layers)
+                for layer in self.layers:
+                    for simple_rectangle in layer.simple_rectangles:
+                        if 'translate' in list(simple_rectangle.keys()):
+                            canvas.translate(simple_rectangle['translate']['x'], simple_rectangle['translate']['y'])
+                            canvas.rotate(simple_rectangle['rotate'])
+                        canvas.drawRect(simple_rectangle["rectangle"], simple_rectangle["border"])
+                        canvas.drawRect(simple_rectangle["rectangle"], simple_rectangle["fill"])
+                        if 'translate' in list(simple_rectangle.keys()):
+                            canvas.rotate(-simple_rectangle['rotate'])
+                            canvas.translate(-simple_rectangle['translate']['x'], -simple_rectangle['translate']['y'])
+                    for rounded_rectangle in layer.rounded_rectangles:
+                        if 'translate' in list(rounded_rectangle.keys()):
+                            canvas.translate(rounded_rectangle['translate']['x'], rounded_rectangle['translate']['y'])
+                            canvas.rotate(rounded_rectangle['rotate'])
+                        canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
+                                             rounded_rectangle["border-radius"], rounded_rectangle["border"])
+                        canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
+                                             rounded_rectangle["border-radius"], rounded_rectangle["fill"])
+                        if 'translate' in list(rounded_rectangle.keys()):
+                            canvas.rotate(-rounded_rectangle['rotate'])
+                            canvas.translate(-rounded_rectangle['translate']['x'], -rounded_rectangle['translate']['y'])
+                    for ellipse in layer.ellipses:
+                        if 'translate' in list(ellipse.keys()):
+                            canvas.translate(ellipse['translate']['x'], ellipse['translate']['y'])
+                            canvas.rotate(ellipse['rotate'])
+                        canvas.drawOval(ellipse["rectangle"], ellipse["border"])
+                        canvas.drawOval(ellipse["rectangle"], ellipse["fill"])
+                        if 'translate' in list(ellipse.keys()):
+                            canvas.rotate(-ellipse['rotate'])
+                            canvas.translate(-ellipse['translate']['x'], -ellipse['translate']['y'])
+                    for polygon in layer.polygons:
+                        if 'translate' in list(polygon.keys()):
+                            canvas.translate(polygon['translate']['x'], polygon['translate']['y'])
+                            canvas.rotate(polygon['rotate'])
                         path = skia.Path()
-                        path.moveTo(vertex['move-to']['x'], vertex['move-to']['y'])
-                        if 'cubic-to' in list(vertex.keys()):
-                            path.cubicTo(vertex['cubic-to']['b1x'], vertex['cubic-to']['b1y'],
-                                         vertex['cubic-to']['b2x'], vertex['cubic-to']['b2y'],
-                                         vertex['cubic-to']['x'], vertex['cubic-to']['y'])
-                        else:
-                            path.lineTo(vertex['line-to']['x'], vertex['line-to']['y'])
-                        canvas.drawPath(path, curve["border"])
-                for text in self.texts:
-                    canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
+                        path.moveTo(polygon['move-to-vertex']['x'], polygon['move-to-vertex']['y'])
+                        for vertex in polygon['line-to-vertices']:
+                            path.lineTo(vertex['x'], vertex['y'])
+                        path.close()
+                        canvas.drawPath(path, polygon["border"])
+                        canvas.drawPath(path, polygon["fill"])
+                        if 'translate' in list(polygon.keys()):
+                            canvas.rotate(-polygon['rotate'])
+                            canvas.translate(-polygon['translate']['x'], -polygon['translate']['y'])
+                    for curve in layer.curves:
+                        for vertex in curve['vertices']:
+                            path = skia.Path()
+                            path.moveTo(vertex['move-to']['x'], vertex['move-to']['y'])
+                            if 'cubic-to' in list(vertex.keys()):
+                                path.cubicTo(vertex['cubic-to']['b1x'], vertex['cubic-to']['b1y'],
+                                             vertex['cubic-to']['b2x'], vertex['cubic-to']['b2y'],
+                                             vertex['cubic-to']['x'], vertex['cubic-to']['y'])
+                            else:
+                                path.lineTo(vertex['line-to']['x'], vertex['line-to']['y'])
+                            canvas.drawPath(path, curve["border"])
+                    for text in layer.texts:
+                        canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
 
     def _export_as(self, file_directory, file_name, file_format):
         image = self._get_image()
@@ -238,63 +261,75 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
             int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX'] + 2 * self.padding),
             int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY'] + 2 * self.padding))
         with surface as canvas:
-            for simple_rectangle in self.simple_rectangles:
-                if 'translate' in list(simple_rectangle.keys()):
-                    canvas.translate(simple_rectangle['translate']['x'], simple_rectangle['translate']['y'])
-                    canvas.rotate(simple_rectangle['rotate'])
-                canvas.drawRoundRect(simple_rectangle["rectangle"], rounded_rectangle["border"])
-                canvas.drawRoundRect(simple_rectangle["rectangle"], rounded_rectangle["fill"])
-                if 'translate' in list(simple_rectangle.keys()):
-                    canvas.rotate(-simple_rectangle['rotate'])
-                    canvas.translate(-simple_rectangle['translate']['x'], -simple_rectangle['translate']['y'])
-            for rounded_rectangle in self.rounded_rectangles:
-                if 'translate' in list(rounded_rectangle.keys()):
-                    canvas.translate(rounded_rectangle['translate']['x'], rounded_rectangle['translate']['y'])
-                    canvas.rotate(rounded_rectangle['rotate'])
-                canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
-                                     rounded_rectangle["border-radius"], rounded_rectangle["border"])
-                canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
-                                     rounded_rectangle["border-radius"], rounded_rectangle["fill"])
-                if 'translate' in list(rounded_rectangle.keys()):
-                    canvas.rotate(-rounded_rectangle['rotate'])
-                    canvas.translate(-rounded_rectangle['translate']['x'], -rounded_rectangle['translate']['y'])
-            for ellipse in self.ellipses:
-                if 'translate' in list(ellipse.keys()):
-                    canvas.translate(ellipse['translate']['x'], ellipse['translate']['y'])
-                    canvas.rotate(ellipse['rotate'])
-                canvas.drawOval(ellipse["rectangle"], ellipse["border"])
-                canvas.drawOval(ellipse["rectangle"], ellipse["fill"])
-                if 'translate' in list(rounded_rectangle.keys()):
-                    canvas.rotate(-ellipse['rotate'])
-                    canvas.translate(-ellipse['translate']['x'], -ellipse['translate']['y'])
-            for polygon in self.polygons:
-                if 'translate' in list(polygon.keys()):
-                    canvas.translate(polygon['translate']['x'], polygon['translate']['y'])
-                    canvas.rotate(polygon['rotate'])
-                path = skia.Path()
-                path.moveTo(polygon['move-to-vertex']['x'], polygon['move-to-vertex']['y'])
-                for vertex in polygon['line-to-vertices']:
-                    path.lineTo(vertex['x'], vertex['y'])
-                path.close()
-                canvas.drawPath(path, polygon["border"])
-                canvas.drawPath(path, polygon["fill"])
-                if 'translate' in list(polygon.keys()):
-                    canvas.rotate(-polygon['rotate'])
-                    canvas.translate(-polygon['translate']['x'], -polygon['translate']['y'])
-            for curve in self.curves:
-                for vertex in curve['vertices']:
+            canvas.drawRect(self.background_canvas['rectangle'], self.background_canvas['fill'])
+            self.sort_layers(self.layers)
+            for layer in self.layers:
+                for simple_rectangle in layer.simple_rectangles:
+                    if 'translate' in list(simple_rectangle.keys()):
+                        canvas.translate(simple_rectangle['translate']['x'], simple_rectangle['translate']['y'])
+                        canvas.rotate(simple_rectangle['rotate'])
+                    canvas.drawRect(simple_rectangle["rectangle"], simple_rectangle["border"])
+                    canvas.drawRect(simple_rectangle["rectangle"], simple_rectangle["fill"])
+                    if 'translate' in list(simple_rectangle.keys()):
+                        canvas.rotate(-simple_rectangle['rotate'])
+                        canvas.translate(-simple_rectangle['translate']['x'], -simple_rectangle['translate']['y'])
+                for rounded_rectangle in layer.rounded_rectangles:
+                    if 'translate' in list(rounded_rectangle.keys()):
+                        canvas.translate(rounded_rectangle['translate']['x'], rounded_rectangle['translate']['y'])
+                        canvas.rotate(rounded_rectangle['rotate'])
+                    canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
+                                         rounded_rectangle["border-radius"], rounded_rectangle["border"])
+                    canvas.drawRoundRect(rounded_rectangle["rectangle"], rounded_rectangle["border-radius"],
+                                         rounded_rectangle["border-radius"], rounded_rectangle["fill"])
+                    if 'translate' in list(rounded_rectangle.keys()):
+                        canvas.rotate(-rounded_rectangle['rotate'])
+                        canvas.translate(-rounded_rectangle['translate']['x'], -rounded_rectangle['translate']['y'])
+                for ellipse in layer.ellipses:
+                    if 'translate' in list(ellipse.keys()):
+                        canvas.translate(ellipse['translate']['x'], ellipse['translate']['y'])
+                        canvas.rotate(ellipse['rotate'])
+                    canvas.drawOval(ellipse["rectangle"], ellipse["border"])
+                    canvas.drawOval(ellipse["rectangle"], ellipse["fill"])
+                    if 'translate' in list(ellipse.keys()):
+                        canvas.rotate(-ellipse['rotate'])
+                        canvas.translate(-ellipse['translate']['x'], -ellipse['translate']['y'])
+                for polygon in layer.polygons:
+                    if 'translate' in list(polygon.keys()):
+                        canvas.translate(polygon['translate']['x'], polygon['translate']['y'])
+                        canvas.rotate(polygon['rotate'])
                     path = skia.Path()
-                    path.moveTo(vertex['move-to']['x'], vertex['move-to']['y'])
-                    if 'cubic-to' in list(vertex.keys()):
-                        path.cubicTo(vertex['cubic-to']['b1x'], vertex['cubic-to']['b1y'],
-                                     vertex['cubic-to']['b2x'], vertex['cubic-to']['b2y'],
-                                     vertex['cubic-to']['x'], vertex['cubic-to']['y'])
-                    else:
-                        path.lineTo(vertex['line-to']['x'], vertex['line-to']['y'])
-                    canvas.drawPath(path, curve["border"])
-            for text in self.texts:
-                canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
+                    path.moveTo(polygon['move-to-vertex']['x'], polygon['move-to-vertex']['y'])
+                    for vertex in polygon['line-to-vertices']:
+                        path.lineTo(vertex['x'], vertex['y'])
+                    path.close()
+                    canvas.drawPath(path, polygon["border"])
+                    canvas.drawPath(path, polygon["fill"])
+                    if 'translate' in list(polygon.keys()):
+                        canvas.rotate(-polygon['rotate'])
+                        canvas.translate(-polygon['translate']['x'], -polygon['translate']['y'])
+                for curve in layer.curves:
+                    for vertex in curve['vertices']:
+                        path = skia.Path()
+                        path.moveTo(vertex['move-to']['x'], vertex['move-to']['y'])
+                        if 'cubic-to' in list(vertex.keys()):
+                            path.cubicTo(vertex['cubic-to']['b1x'], vertex['cubic-to']['b1y'],
+                                         vertex['cubic-to']['b2x'], vertex['cubic-to']['b2y'],
+                                         vertex['cubic-to']['x'], vertex['cubic-to']['y'])
+                        else:
+                            path.lineTo(vertex['line-to']['x'], vertex['line-to']['y'])
+                        canvas.drawPath(path, curve["border"])
+                for text in layer.texts:
+                    canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
 
         return surface.makeImageSnapshot()
 
 
+class Layer:
+    def __init__(self, layer_index):
+        self.layer_index = layer_index
+        self.simple_rectangles = []
+        self.rounded_rectangles = []
+        self.ellipses = []
+        self.polygons = []
+        self.curves = []
+        self.texts = []
