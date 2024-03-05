@@ -1,5 +1,4 @@
 from .export_figure_base import NetworkInfoExportToFigureBase
-import webcolors
 import skia
 from PIL import Image as PIL_Image
 from PIL import ImageColor
