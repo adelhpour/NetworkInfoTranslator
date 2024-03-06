@@ -29,10 +29,10 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         layers.sort(key=lambda x: x.layer_index)
 
     def draw_background_canvas(self, background_color):
-        self.background_canvas['rectangle'] = skia.Rect(self.graph_info.extents['minX'],
-                                                        self.graph_info.extents['minY'],
-                                                        self.graph_info.extents['maxX'] + 2 * self.padding,
-                                                        self.graph_info.extents['maxY'] + 2 * self.padding)
+        self.background_canvas['rectangle'] = skia.Rect(self.graph_info.extents['minX'] - self.padding,
+                                  self.graph_info.extents['minY'] - self.padding,
+                                  abs(self.graph_info.extents['minX']) + 2 * self.padding + self.graph_info.extents['maxX'] - self.graph_info.extents['minX'],
+                                  abs(self.graph_info.extents['minY']) + 2 * self.padding + self.graph_info.extents['maxY'] - self.graph_info.extents['minY'])
         self.background_canvas['fill'] = self._create_fill_paint(background_color)
 
     def draw_simple_rectangle(self, x, y, width, height,
