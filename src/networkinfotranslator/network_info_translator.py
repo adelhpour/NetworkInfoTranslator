@@ -21,18 +21,3 @@ def import_sbml_export_pil_image(import_file):
     export_to_figure = NetworkInfoExportToSkia()
     export_to_figure.extract_graph_info(import_from_sbml)
     return export_to_figure.export_as_pil_image()
-
-"""
-sbml_graph_info = NetworkInfoImportFromNetworkEditor()
-sbml_graph_info.extract_info("/Users/home/Downloads/Model.json")
-sbml_export = NetworkInfoExportToMatPlotLib()
-sbml_export.extract_graph_info(sbml_graph_info)
-sbml_export.export("/Users/home/Downloads/Model.json")
-
-sbml_graph_info = NetworkInfoImportFromNetworkEditor()
-f = open("/Users/home/Downloads/network7.json")
-sbml_graph_info.extract_info(json.load(f))
-sbml_export = NetworkInfoExportToSBMLModel()
-sbml_export.extract_graph_info(sbml_graph_info)
-sbml_export.export("/Users/home/Downloads/Model.xml")
-"""
