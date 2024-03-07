@@ -145,6 +145,16 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                    v_text_anchor, h_text_anchor, z_order):
         text = {}
         text_font = skia.Font(None, font_size)
+        if font_weight == "bold":
+            if font_style == "italic":
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle().BoldItalic()), font_size)
+            else:
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle().Bold()), font_size)
+        else:
+            if font_style == "italic":
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle.Italic()), font_size)
+            else:
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle.Normal()), font_size)
         while text_font.measureText(plain_text) > width:
             font_size = font_size - 1
             text_font = skia.Font(None, font_size)

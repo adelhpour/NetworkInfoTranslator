@@ -45,23 +45,33 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
             self.background_color = self.sbml_network_editor.getBackgroundColor()
 
         # get colors info
-        for c_index in range(self.sbml_network_editor.getNumColors()):
-            self.add_color(self.sbml_network_editor.getNthColorId(c_index))
+        for c_index in range(self.sbml_network_editor.getNumGlobalColors()):
+            self.add_color(self.sbml_network_editor.getNthGlobalColorId(c_index))
 
         # get gradients info
-        for g_index in range(self.sbml_network_editor.getNumGradients()):
-            self.add_gradient(self.sbml_network_editor.getNthGradientId(g_index))
+        for g_index in range(self.sbml_network_editor.getNumGlobalGradients()):
+            self.add_gradient(self.sbml_network_editor.getNthGlobalGradientId(g_index))
 
         # get line ending info
-        for le_index in range(self.sbml_network_editor.getNumLineEndings()):
-            self.add_line_ending(self.sbml_network_editor.getNthLineEndingId(le_index))
+        for le_index in range(self.sbml_network_editor.getNumGlobalLineEndings()):
+            self.add_line_ending(self.sbml_network_editor.getNthGlobalLineEndingId(le_index))
 
     def extract_local_render_info(self):
         if self.sbml_network_editor.getNumGlobalRenderInformation():
             self.sbml_network_editor.createDefaultLocalRenderInformation()
 
     def extract_local_render_features(self):
-        pass
+        # get colors info
+        for c_index in range(self.sbml_network_editor.getNumLocalColors()):
+            self.add_color(self.sbml_network_editor.getNthLocalColorId(c_index))
+
+        # get gradients info
+        for g_index in range(self.sbml_network_editor.getNumLocalGradients()):
+            self.add_gradient(self.sbml_network_editor.getNthLocalGradientId(g_index))
+
+        # get line ending info
+        for le_index in range(self.sbml_network_editor.getNumLocalLineEndings()):
+            self.add_line_ending(self.sbml_network_editor.getNthLocalLineEndingId(le_index))
 
     def extract_extents(self, bounding_box_x, bounding_box_y, bounding_box_width, bounding_box_height):
         self.extents['minX'] = min(self.extents['minX'], bounding_box_x)
