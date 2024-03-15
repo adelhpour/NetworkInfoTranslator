@@ -162,8 +162,20 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         text_height = text_font.getSize()
         text['text-paint'] = self._create_text_paint(font_color)
         text['text'] = skia.TextBlob(plain_text, text_font)
-        text['x'] = abs(self.graph_info.extents['minX']) + self.padding + x + 0.5 * width - 0.5 * text_width
-        text['y'] = abs(self.graph_info.extents['minY']) + self.padding + y + 0.5 * height + 0.4 * text_height
+        text['x'] = abs(self.graph_info.extents['minX']) + self.padding + x
+        if h_text_anchor == "left":
+            text['x'] += 0
+        elif h_text_anchor == "right":
+            text['x'] += width - text_width
+        elif h_text_anchor == "center":
+            text['x'] += 0.5 * width - 0.5 * text_width
+        text['y'] = abs(self.graph_info.extents['minY']) + self.padding + y
+        if v_text_anchor == "top":
+            text['y'] += height - text_height + 0.4 * text_height
+        elif v_text_anchor == "bottom":
+            text['y'] += height - 0.1 * text_height
+        elif v_text_anchor == "center":
+            text['y'] += 0.5 * height + 0.4 * text_height
         self._get_layer(z_order).texts.append(text)
 
     def export(self, file_directory="", file_name="", file_format=""):
@@ -173,7 +185,7 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
             self._export_as(file_directory, file_name, file_format)
 
     def export_as_pil_image(self):
-        return PIL_Image.fromarray(self._get_image().convert(alphaType=skia.kUnpremul_AlphaType))
+        return PIL_Image.fromarray(self._get_image().convert(alphaType=skia.kUnpremul_AlphaType, colorType=skia.kRGB_888x_ColorType))
 
     def _create_fill_paint(self, fill_color):
         return skia.Paint(Color=self._get_skia_color(fill_color), Style=skia.Paint.kFill_Style, AntiAlias=True)
