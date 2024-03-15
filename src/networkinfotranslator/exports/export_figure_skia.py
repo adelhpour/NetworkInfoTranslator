@@ -162,21 +162,31 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         text_height = text_font.getSize()
         text['text-paint'] = self._create_text_paint(font_color)
         text['text'] = skia.TextBlob(plain_text, text_font)
-        text['x'] = abs(self.graph_info.extents['minX']) + self.padding + x
-        if h_text_anchor == "left":
-            text['x'] += 0
-        elif h_text_anchor == "right":
-            text['x'] += width - text_width
-        elif h_text_anchor == "center":
-            text['x'] += 0.5 * width - 0.5 * text_width
-        text['y'] = abs(self.graph_info.extents['minY']) + self.padding + y
-        if v_text_anchor == "top":
-            text['y'] += height - text_height + 0.4 * text_height
-        elif v_text_anchor == "bottom":
-            text['y'] += height - 0.1 * text_height
-        elif v_text_anchor == "center":
-            text['y'] += 0.5 * height + 0.4 * text_height
+        text['x'] = (abs(self.graph_info.extents['minX']) + self.padding + x +
+                     self._text_horizontal_adjustment_padding(h_text_anchor, text_width, width))
+        text['y'] = abs(self.graph_info.extents['minY']) + self.padding + y + self._text_vertical_adjustment_padding(v_text_anchor, text_height, height)
         self._get_layer(z_order).texts.append(text)
+
+    def _text_horizontal_adjustment_padding(self, h_text_anchor, text_width, width):
+        if h_text_anchor == "left":
+            return 0.0
+        elif h_text_anchor == "right":
+            return width - text_width
+        elif h_text_anchor == "center":
+            return 0.5 * width - 0.5 * text_width
+
+        return 0.0
+
+    def _text_vertical_adjustment_padding(self, v_text_anchor, text_height, height):
+        if v_text_anchor == "top":
+            return height - text_height + 0.4 * text_height
+        elif v_text_anchor == "bottom":
+            return height - 0.1 * text_height
+        elif v_text_anchor == "center":
+            return 0.5 * height + 0.4 * text_height
+
+        return 0.0
+
 
     def export(self, file_directory="", file_name="", file_format=""):
         if file_format == "pdf":
