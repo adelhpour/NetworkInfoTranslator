@@ -87,6 +87,14 @@ class NetworkInfoImportBase:
 
         return color_id + str(k)
 
+    def find_gradient(self, gradient_id):
+        for gradient in self.gradients:
+            if gradient_id == gradient['id'] and 'stops' in list(gradient['features'].keys()):
+                return gradient
+
+        return {}
+
+
     def find_line_ending(self, line_ending_id):
         for line_ending in self.line_endings:
             if line_ending_id == line_ending['id']:

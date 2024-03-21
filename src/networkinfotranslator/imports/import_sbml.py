@@ -203,7 +203,59 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
             color['features']['value'] = "#ffffff"
 
     def extract_gradient_features(self, gradient):
-        pass
+        gradient['features'] = {}
+        # get spread method
+        if self.sbml_network_editor.isSetSpreadMethod(gradient['id']):
+            gradient['features']['spreadMethod'] = self.sbml_network_editor.getSpreadMethod(gradient['id'])
+
+        # get gradient stops
+        stops_ = []
+        for s_index in range(self.sbml_network_editor.getNumGradientStops(gradient['id'])):
+            stop_ = {}
+            # get offset
+            if self.sbml_network_editor.isSetOffset(gradient['id'], s_index):
+                stop_['offset'] = {'abs': 0, 'rel': self.sbml_network_editor.getOffset(gradient['id'], s_index)}
+
+            # get stop color
+            if self.sbml_network_editor.isSetStopColor(gradient['id'], s_index):
+                stop_['color'] = self.sbml_network_editor.getStopColor(gradient['id'], s_index)
+            stops_.append(stop_)
+        gradient['features']['stops'] = stops_
+
+        # linear gradient
+        if self.sbml_network_editor.isLinearGradient(gradient['id']):
+            gradient['features']['type'] = 'linear'
+            # get start
+            gradient['features']['start'] = \
+                {'x': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getLinearGradientX1(gradient['id'])},
+                 'y': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getLinearGradientY1(gradient['id'])}}
+            # get end
+            gradient['features']['end'] = \
+                {'x': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getLinearGradientX2(gradient['id'])},
+                 'y': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getLinearGradientY2(gradient['id'])}}
+        # radial gradient
+        elif self.sbml_network_editor.isRadialGradient(gradient['id']):
+            gradient['features']['type'] = 'radial'
+            # get center
+            gradient['features']['center'] = \
+                {'x': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getRadialGradientCenterX(gradient['id'])},
+                 'y': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getRadialGradientCenterY(gradient['id'])}}
+            # get focal
+            gradient['features']['focalPoint'] = \
+                {'x': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getRadialGradientFocalX(gradient['id'])},
+                 'y': {'abs': 0.0,
+                        'rel': self.sbml_network_editor.getRadialGradientFocalY(gradient['id'])}}
+            # get radius
+            gradient['features']['radius'] = \
+                {'abs': 0.0,
+                    'rel': self.sbml_network_editor.getRadialGradientRadius(gradient['id'])}
 
     def extract_line_ending_features(self, line_ending):
         line_ending['features'] = {}
@@ -212,20 +264,6 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                                                   'width': self.sbml_network_editor.getLineEndingBoundingBoxWidth(line_ending['id']),
                                                   'height': self.sbml_network_editor.getLineEndingBoundingBoxHeight(line_ending['id'])}
         line_ending['features']['graphicalShape'] = self.extract_line_ending_graphical_shape_features(line_ending['id'])
-        """
-        
-        if line_ending['lineEnding']:
-            # get bounding box features
-            
-
-            line_ending['features']['graphicalShape'] = \
-                self.extract_graphical_shape_features(libsbmlnetworkeditor.getRenderGroup(line_ending['lineEnding']))
-
-            # get enable rotation
-            if libsbmlnetworkeditor.isSetEnableRotationalMapping(line_ending['lineEnding']):
-                line_ending['features']['enableRotation'] = libsbmlnetworkeditor.getEnableRotationalMapping(
-                    line_ending['lineEnding'])
-    """
 
     def extract_go_text_features(self, entity_id, graphical_object_index):
         text_features = []

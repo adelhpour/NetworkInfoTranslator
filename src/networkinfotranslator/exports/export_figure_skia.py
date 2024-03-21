@@ -49,7 +49,10 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minY']) + self.padding + y,
                                   abs(self.graph_info.extents['minX']) + self.padding + x + width,
                                   abs(self.graph_info.extents['minY']) + self.padding + y + height)
-        simple_rectangle['fill'] = self._create_fill_paint(fill_color)
+        simple_rectangle['fill'] = self._create_fill_paint(fill_color, simple_rectangle['rectangle'].x(),
+                                                           simple_rectangle['rectangle'].y(),
+                                                           simple_rectangle['rectangle'].width(),
+                                                           simple_rectangle['rectangle'].height())
         simple_rectangle['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self._get_layer(z_order).simple_rectangles.append(simple_rectangle)
 
@@ -69,7 +72,10 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minX']) + self.padding + x + width,
                                   abs(self.graph_info.extents['minY']) + self.padding + y + height)
         rounded_rectangle['border-radius'] = 0.5 * (corner_radius_x +  corner_radius_y)
-        rounded_rectangle['fill'] = self._create_fill_paint(fill_color)
+        rounded_rectangle['fill'] = self._create_fill_paint(fill_color, rounded_rectangle['rectangle'].x(),
+                                                            rounded_rectangle['rectangle'].y(),
+                                                            rounded_rectangle['rectangle'].width(),
+                                                            rounded_rectangle['rectangle'].height())
         rounded_rectangle['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self._get_layer(z_order).rounded_rectangles.append(rounded_rectangle)
 
@@ -89,7 +95,10 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                   abs(self.graph_info.extents['minY']) + self.padding + cy - ry,
                                   abs(self.graph_info.extents['minX']) + self.padding + cx + rx,
                                   abs(self.graph_info.extents['minY']) + self.padding + cy + ry)
-        ellipse['fill'] = self._create_fill_paint(fill_color)
+        ellipse['fill'] = self._create_fill_paint(fill_color, ellipse['rectangle'].x(),
+                                                 ellipse['rectangle'].y(),
+                                                 ellipse['rectangle'].width(),
+                                                 ellipse['rectangle'].height())
         ellipse['border'] = self._create_border_paint(stroke_color, stroke_width, stroke_dash_array)
         self._get_layer(z_order).ellipses.append(ellipse)
 
@@ -197,8 +206,12 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
     def export_as_pil_image(self):
         return PIL_Image.fromarray(self._get_image().convert(alphaType=skia.kUnpremul_AlphaType, colorType=skia.kRGB_888x_ColorType))
 
-    def _create_fill_paint(self, fill_color):
-        return skia.Paint(Color=self._get_skia_color(fill_color), Style=skia.Paint.kFill_Style, AntiAlias=True)
+    def _create_fill_paint(self, fill_color, x=0.0, y=0.0, width=0.0, height=0.0):
+        gradient = self.graph_info.find_gradient(fill_color)
+        if gradient:
+            return skia.Paint(Shader=self._get_skia_gradient_shader(gradient, x, y, width, height), AntiAlias=True)
+        else:
+            return skia.Paint(Color=self._get_skia_color(fill_color), Style=skia.Paint.kFill_Style, AntiAlias=True)
 
     def _create_border_paint(self, stroke_color, stroke_width, stroke_dash_array):
         if len(stroke_dash_array) and len(stroke_dash_array) % 2 == 0:
@@ -211,6 +224,32 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
 
     def _create_text_paint(self, font_color):
         return skia.Paint(Color=self._get_skia_color(font_color), AntiAlias=True)
+
+    def _get_skia_gradient_shader(self, gradient, x, y, width, height):
+        stop_colors = []
+        stop_positions = []
+        for stop in gradient['features']['stops']:
+            if 'color' in list(stop.keys()):
+                stop_colors.append(self._get_skia_color((stop['color'])))
+            else:
+                stop_colors.append("#ffffff")
+            if 'offset' in list(stop.keys()):
+                stop_positions.append(0.01 * stop['offset']['rel'])
+            else:
+                stop_positions.append(0.0)
+        if gradient['features']['type'] == "linear":
+            return skia.GradientShader.MakeLinear(points=[(x + 0.01 * width * gradient['features']['start']['x']['rel'],
+                                                           y + 0.01 * height * gradient['features']['start']['y']['rel']),
+                                                          (x + 0.01 * width * gradient['features']['end']['x']['rel'],
+                                                           y + 0.01 * height * gradient['features']['end']['y']['rel'])],
+                                                  colors=stop_colors,
+                                                  positions=stop_positions)
+        else:
+            return skia.GradientShader.MakeRadial(center=(x + 0.01 * width * gradient['features']['center']['x']['rel'],
+                                                          y + 0.01 * height * gradient['features']['center']['y']['rel']),
+                                                  radius=0.01 * width * gradient['features']['radius']['rel'],
+                                                  colors=stop_colors,
+                                                  positions=stop_positions)
 
     def _get_skia_color(self, color_name):
         rgb_color = ImageColor.getrgb(self.graph_info.find_color_value(color_name, False))
