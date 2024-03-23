@@ -260,6 +260,7 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         with skia.PDF.MakeDocument(stream) as document:
             with document.page(int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX']) + + 2 * self.padding,
                                int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY']) + + 2 * self.padding) as canvas:
+                canvas.drawRect(self.background_canvas['rectangle'], self.background_canvas['fill'])
                 self.sort_layers(self.layers)
                 for layer in self.layers:
                     for simple_rectangle in layer.simple_rectangles:
