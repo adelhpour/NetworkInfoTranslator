@@ -1,5 +1,4 @@
-libsbmlnetworkeditor
-matplotlib>=3.4.0
+libsbmlnetworkeditor==0.0.14
 skia-python
 numpy
 python-libsbml

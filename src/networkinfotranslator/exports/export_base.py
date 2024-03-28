@@ -13,6 +13,9 @@ class NetworkInfoExportBase:
         # update the features of the entities
         graph_info.extract_entity_features()
 
+        # background canvas
+        self.set_background(graph_info)
+
         # compartments
         for c in graph_info.compartments:
             self.add_compartment(c)
@@ -24,6 +27,9 @@ class NetworkInfoExportBase:
         # reactions
         for r in graph_info.reactions:
             self.add_reaction(r)
+
+    def set_background(self, graph_info):
+        pass
 
     def add_compartment(self, compartment):
         pass
