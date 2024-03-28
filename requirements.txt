@@ -1,4 +1,4 @@
-libsbmlnetworkeditor==0.0.13
+libsbmlnetworkeditor==0.0.14
 skia-python
 numpy
 python-libsbml
