@@ -163,7 +163,7 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
                      fontstyle=font_style, fontweight=font_weight,
                      va=v_text_anchor, ha=h_text_anchor, zorder=zorder)
 
-    def export(self, file_directory="", file_name="", file_format=""):
+    def export(self, file_name=""):
         if len(self.sbml_axes.patches):
             self.sbml_axes.set_aspect('equal')
             self.sbml_figure.set_size_inches(
@@ -173,6 +173,5 @@ class NetworkInfoExportToMatPlotLib(NetworkInfoExportToFigureBase):
             plt.axis('off')
             plt.tight_layout()
 
-            self.sbml_figure.savefig(self.get_output_name(file_directory, file_name, file_format), transparent=True,
-                                     dpi=300)
+            self.sbml_figure.savefig(file_name, transparent=True, dpi=300)
             plt.close('all')

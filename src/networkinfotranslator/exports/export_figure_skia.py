@@ -196,12 +196,11 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
 
         return 0.0
 
-
-    def export(self, file_directory="", file_name="", file_format=""):
-        if file_format == "pdf":
-            self._export_as_pdf(file_directory, file_name)
+    def export(self, file_name=""):
+        if file_name.split(".")[-1] == "pdf":
+            self._export_as_pdf(file_name)
         else:
-            self._export_as(file_directory, file_name, file_format)
+            self._export_as(file_name)
 
     def export_as_pil_image(self):
         return PIL_Image.fromarray(self._get_image().convert(alphaType=skia.kUnpremul_AlphaType, colorType=skia.kRGB_888x_ColorType))
@@ -255,8 +254,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         rgb_color = ImageColor.getrgb(self.graph_info.find_color_value(color_name, False))
         return skia.Color(rgb_color[0], rgb_color[1], rgb_color[2])
 
-    def _export_as_pdf(self, file_directory, file_name):
-        stream = skia.FILEWStream(self.get_output_name(file_directory, file_name, "pdf"))
+    def _export_as_pdf(self, file_name):
+        stream = skia.FILEWStream(file_name)
         with skia.PDF.MakeDocument(stream) as document:
             with document.page(int(self.graph_info.extents['maxX'] - self.graph_info.extents['minX']) + + 2 * self.padding,
                                int(self.graph_info.extents['maxY'] - self.graph_info.extents['minY']) + + 2 * self.padding) as canvas:
@@ -320,12 +319,12 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                     for text in layer.texts:
                         canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
 
-    def _export_as(self, file_directory, file_name, file_format):
+    def _export_as(self, file_name):
         image = self._get_image()
-        if file_format == "jpg":
-            image.save(self.get_output_name(file_directory, file_name, "jpg"), skia.kJPEG)
+        if file_name.split(".")[-1] == "jpg":
+            image.save(file_name, skia.kJPEG)
         else:
-            image.save(self.get_output_name(file_directory, file_name, "png"), skia.kPNG)
+            image.save(file_name, skia.kPNG)
 
     def _get_image(self):
         surface = skia.Surface(
