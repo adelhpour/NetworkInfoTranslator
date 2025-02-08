@@ -628,7 +628,7 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
         return image_shape_info
 
-    def extract_curve_shape_features(self, entity_id, geometric_shape_index, graphical_object_index):
+    def extract_curve_shape_features(self, entity_id, graphical_object_index, geometric_shape_index):
         # set shape
         curve_shape_info = {'shape': "renderCurve"}
         vertices_ = []
