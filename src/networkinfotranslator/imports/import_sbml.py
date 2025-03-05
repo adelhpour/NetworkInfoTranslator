@@ -212,14 +212,16 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
                 if cs_index == 0:
                     species_reference['features']['startPoint'] = {'x': curve_segment['startX'], 'y': curve_segment['startY']}
-                    if 'basePoint1X' in list(curve_segment.keys()) and not curve_segment['startX'] == curve_segment['basePoint1X']:
+                    if 'basePoint1X' in list(curve_segment.keys()) and (not curve_segment['startX'] == curve_segment['basePoint1X'] or not curve_segment['startY'] == curve_segment['basePoint1Y']):
                         species_reference['features']['startSlope'] = math.atan2(curve_segment['startY'] - curve_segment['basePoint1Y'], curve_segment['startX'] - curve_segment['basePoint1X'])
                     else:
                         species_reference['features']['startSlope'] = math.atan2(curve_segment['startY'] - curve_segment['endY'], curve_segment['startX'] - curve_segment['endX'])
                 if cs_index == self.sbml_network.getNumSpeciesReferenceCurveSegments(species_reference['reaction'], species_reference['reaction_glyph_index'], species_reference['species_reference_glyph_index']) - 1:
                     species_reference['features']['endPoint'] = {'x': curve_segment['endX'], 'y': curve_segment['endY']}
-                    if 'basePoint2X' in list(curve_segment.keys()) and not curve_segment['endX'] == curve_segment['basePoint2X']:
+                    if 'basePoint2X' in list(curve_segment.keys()) and (not curve_segment['endX'] == curve_segment['basePoint2X'] or not curve_segment['endY'] == curve_segment['basePoint2Y']):
                         species_reference['features']['endSlope'] = math.atan2(curve_segment['endY'] - curve_segment['basePoint2Y'], curve_segment['endX'] - curve_segment['basePoint2X'])
+                    elif 'basePoint1X' in list(curve_segment.keys()) and (not curve_segment['endX'] == curve_segment['basePoint1X'] or not curve_segment['endY'] == curve_segment['basePoint1Y']):
+                        species_reference['features']['endSlope'] = math.atan2(curve_segment['endY'] - curve_segment['basePoint1Y'], curve_segment['endX'] - curve_segment['basePoint1X'])
                     else:
                         species_reference['features']['endSlope'] = math.atan2(curve_segment['endY'] - curve_segment['startY'], curve_segment['endX'] - curve_segment['startX'])
                 curve.append(curve_segment)

@@ -236,12 +236,16 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
 
     def _create_border_paint(self, stroke_color, stroke_width, stroke_dash_array):
         if len(stroke_dash_array) and len(stroke_dash_array) % 2 == 0:
-            return skia.Paint(Color=self._get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
+            paint = skia.Paint(Color=self._get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
                                PathEffect=skia.DashPathEffect.Make(list(stroke_dash_array), 0.0),
                                StrokeWidth=stroke_width, AntiAlias=True)
+            paint.setStrokeCap(skia.Paint.kRound_Cap)
+            return paint
         else:
-            return skia.Paint(Color=self._get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
+            paint = skia.Paint(Color=self._get_skia_color(stroke_color), Style=skia.Paint.kStroke_Style,
                                StrokeWidth=stroke_width, AntiAlias=True)
+            paint.setStrokeCap(skia.Paint.kRound_Cap)
+            return paint
 
     def _create_text_paint(self, font_color):
         return skia.Paint(Color=self._get_skia_color(font_color), AntiAlias=True)
