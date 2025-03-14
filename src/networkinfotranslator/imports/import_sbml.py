@@ -784,42 +784,42 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
         rectangle_shape_info = {'shape': "rectangle"}
 
         # get fill color
-        if self.sbml_network.isSetGeometricShapeFillColor(entity_id, graphical_object_index):
-            rectangle_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(entity_id, graphical_object_index)
+        if self.sbml_network.isSetGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index)
 
         # get position x
-        if self.sbml_network.isSetGeometricShapeX(entity_id, graphical_object_index):
-            rectangle_shape_info['x'] = {'abs': self.sbml_network.getGeometricShapeX(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeX(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['x'] = {'abs': self.sbml_network.getGeometricShapeX(entity_id, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get position y
-        if self.sbml_network.isSetGeometricShapeY(entity_id, graphical_object_index):
-            rectangle_shape_info['y'] = {'abs': self.sbml_network.getGeometricShapeY(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeY(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['y'] = {'abs': self.sbml_network.getGeometricShapeY(entity_id, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get dimension width
-        if self.sbml_network.isSetGeometricShapeWidth(entity_id, graphical_object_index):
-            rectangle_shape_info['width'] = {'abs': self.sbml_network.getGeometricShapeWidth(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeWidth(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['width'] = {'abs': self.sbml_network.getGeometricShapeWidth(entity_id, graphical_object_index=graphical_object_index),
                                             'rel': 0.0}
 
         # get dimension height
-        if self.sbml_network.isSetGeometricShapeHeight(entity_id, graphical_object_index):
-            rectangle_shape_info['height'] = {'abs': self.sbml_network.getGeometricShapeHeight(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeHeight(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['height'] = {'abs': self.sbml_network.getGeometricShapeHeight(entity_id, graphical_object_index=graphical_object_index),
                                              'rel': 0.0}
 
         # get corner curvature radius rx
-        if self.sbml_network.isSetGeometricShapeBorderRadiusX(entity_id, graphical_object_index):
-            rectangle_shape_info['rx'] = {'abs': self.sbml_network.getGeometricShapeBorderRadiusX(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeBorderRadiusX(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['rx'] = {'abs': self.sbml_network.getGeometricShapeBorderRadiusX(entity_id, graphical_object_index=graphical_object_index),
                                           'rel': 0.0}
 
         # get corner curvature radius ry
-        if self.sbml_network.isSetGeometricShapeBorderRadiusY(entity_id, graphical_object_index):
-            rectangle_shape_info['ry'] = {'abs': self.sbml_network.getGeometricShapeBorderRadiusY(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeBorderRadiusY(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['ry'] = {'abs': self.sbml_network.getGeometricShapeBorderRadiusY(entity_id, graphical_object_index=graphical_object_index),
                                           'rel': 0.0}
 
         # get width/height ratio
-        if self.sbml_network.isSetGeometricShapeRatio(entity_id, graphical_object_index):
-            rectangle_shape_info['ratio'] = self.sbml_network.getGeometricShapeRatio(entity_id, graphical_object_index)
+        if self.sbml_network.isSetGeometricShapeRatio(entity_id, graphical_object_index=graphical_object_index):
+            rectangle_shape_info['ratio'] = self.sbml_network.getGeometricShapeRatio(entity_id, graphical_object_index=graphical_object_index)
 
         return rectangle_shape_info
 
@@ -872,32 +872,32 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
         ellipse_shape_info = {'shape': "ellipse"}
 
         # get fill color
-        if self.sbml_network.isSetGeometricShapeFillColor(entity_id, graphical_object_index):
-            ellipse_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(entity_id, graphical_object_index)
+        if self.sbml_network.isSetGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index)
 
         # get position cx
-        if self.sbml_network.isSetGeometricShapeCenterX(entity_id, graphical_object_index):
-            ellipse_shape_info['cx'] = {'abs': self.sbml_network.getGeometricShapeCenterX(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeCenterX(entity_id, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['cx'] = {'abs': self.sbml_network.getGeometricShapeCenterX(entity_id, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get position cy
-        if self.sbml_network.isSetGeometricShapeCenterY(entity_id, graphical_object_index):
-            ellipse_shape_info['cy'] = {'abs': self.sbml_network.getGeometricShapeCenterY(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeCenterY(entity_id, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['cy'] = {'abs': self.sbml_network.getGeometricShapeCenterY(entity_id, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get dimension rx
-        if self.sbml_network.isSetGeometricShapeRadiusX(entity_id, graphical_object_index):
-            ellipse_shape_info['rx'] = {'abs': self.sbml_network.getGeometricShapeRadiusX(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeRadiusX(entity_id, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['rx'] = {'abs': self.sbml_network.getGeometricShapeRadiusX(entity_id, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get dimension ry
-        if self.sbml_network.isSetGeometricShapeRadiusY(entity_id, graphical_object_index):
-            ellipse_shape_info['ry'] = {'abs': self.sbml_network.getGeometricShapeRadiusY(entity_id, graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeRadiusY(entity_id, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['ry'] = {'abs': self.sbml_network.getGeometricShapeRadiusY(entity_id, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get radius ratio
-        if self.sbml_network.isSetGeometricShapeRatio(entity_id, graphical_object_index):
-            ellipse_shape_info['ratio'] = self.sbml_network.getGeometricShapeRatio(entity_id, graphical_object_index)
+        if self.sbml_network.isSetGeometricShapeRatio(entity_id, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['ratio'] = self.sbml_network.getGeometricShapeRatio(entity_id, graphical_object_index=graphical_object_index)
 
         return ellipse_shape_info
 
@@ -940,28 +940,28 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
         polygon_shape_info = {'shape': "polygon"}
 
         # get fill color
-        if self.sbml_network.isSetGeometricShapeFillColor(entity_id, graphical_object_index):
-            polygon_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(entity_id, graphical_object_index)
+        if self.sbml_network.isSetGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index):
+            polygon_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index)
 
         # get fill rule
-        if self.sbml_network.isSetFillRule(entity_id, graphical_object_index):
-            polygon_shape_info['fillRule'] = self.sbml_network.getFillRule(entity_id, graphical_object_index)
+        if self.sbml_network.isSetFillRule(entity_id, graphical_object_index=graphical_object_index):
+            polygon_shape_info['fillRule'] = self.sbml_network.getFillRule(entity_id, graphical_object_index=graphical_object_index)
 
         vertices_ = []
-        for v_index in range(self.sbml_network.getGeometricShapeNumSegments(entity_id, graphical_object_index)):
+        for v_index in range(self.sbml_network.getGeometricShapeNumSegments(entity_id, graphical_object_index=graphical_object_index)):
             vertex_ = {}
-            vertex_['renderPointX'] = {'abs': self.sbml_network.getGeometricShapeSegmentX(entity_id, v_index, graphical_object_index),
+            vertex_['renderPointX'] = {'abs': self.sbml_network.getGeometricShapeSegmentX(entity_id, v_index, graphical_object_index=graphical_object_index),
                                        'rel': 0.0}
-            vertex_['renderPointY'] = {'abs': self.sbml_network.getGeometricShapeSegmentY(entity_id, v_index, graphical_object_index),
+            vertex_['renderPointY'] = {'abs': self.sbml_network.getGeometricShapeSegmentY(entity_id, v_index, graphical_object_index=graphical_object_index),
                                        'rel': 0.0}
-            if self.sbml_network.isGeometricShapeSegmentCubicBezier(entity_id, v_index, graphical_object_index):
-                vertex_['basePoint1X'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint1X(entity_id, v_index, graphical_object_index),
+            if self.sbml_network.isGeometricShapeSegmentCubicBezier(entity_id, v_index, graphical_object_index=graphical_object_index):
+                vertex_['basePoint1X'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint1X(entity_id, v_index, graphical_object_index=graphical_object_index),
                                           'rel': 0.0}
-                vertex_['basePoint1Y'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint1Y(entity_id, v_index, graphical_object_index),
+                vertex_['basePoint1Y'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint1Y(entity_id, v_index, graphical_object_index=graphical_object_index),
                                           'rel': 0.0}
-                vertex_['basePoint2X'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint2X(entity_id, v_index, graphical_object_index),
+                vertex_['basePoint2X'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint2X(entity_id, v_index, graphical_object_index=graphical_object_index),
                                           'rel': 0.0}
-                vertex_['basePoint2Y'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint2Y(entity_id, v_index, graphical_object_index),
+                vertex_['basePoint2Y'] = {'abs': self.sbml_network.getGeometricShapeSegmentBasePoint2Y(entity_id, v_index, graphical_object_index=graphical_object_index),
                                           'rel': 0.0}
             vertices_.append(vertex_)
         polygon_shape_info['vertices'] = vertices_
