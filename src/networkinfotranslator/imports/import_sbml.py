@@ -211,19 +211,52 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                     curve_segment["basePoint2Y"] = self.sbml_network.getSpeciesReferenceCurveSegmentBasePoint2Y(species_reference['reaction'], species_reference['reaction_glyph_index'], species_reference['species_reference_glyph_index'], cs_index)
 
                 if cs_index == 0:
-                    species_reference['features']['startPoint'] = {'x': curve_segment['startX'], 'y': curve_segment['startY']}
-                    if 'basePoint1X' in list(curve_segment.keys()) and (not curve_segment['startX'] == curve_segment['basePoint1X'] or not curve_segment['startY'] == curve_segment['basePoint1Y']):
-                        species_reference['features']['startSlope'] = math.atan2(curve_segment['startY'] - curve_segment['basePoint1Y'], curve_segment['startX'] - curve_segment['basePoint1X'])
+                    species_reference['features']['startPoint'] = {'x': curve_segment['startX'],
+                                                                   'y': curve_segment['startY']}
+                    if 'basePoint1X' in list(curve_segment.keys()) and (
+                            not curve_segment['startX'] == curve_segment['basePoint1X'] or not curve_segment[
+                                                                                                   'startY'] ==
+                                                                                               curve_segment[
+                                                                                                   'basePoint1Y']):
+                        species_reference['features']['startSlope'] = math.atan2(
+                            curve_segment['startY'] - curve_segment['basePoint1Y'],
+                            curve_segment['startX'] - curve_segment['basePoint1X'])
+                    elif 'basePoint2X' in list(curve_segment.keys()) and (
+                            not curve_segment['startX'] == curve_segment['basePoint2X'] or not curve_segment[
+                                                                                                   'startY'] ==
+                                                                                               curve_segment[
+                                                                                                   'basePoint2Y']):
+                        species_reference['features']['startSlope'] = math.atan2(
+                            curve_segment['startY'] - curve_segment['basePoint2Y'],
+                            curve_segment['startX'] - curve_segment['basePoint2X'])
                     else:
-                        species_reference['features']['startSlope'] = math.atan2(curve_segment['startY'] - curve_segment['endY'], curve_segment['startX'] - curve_segment['endX'])
-                if cs_index == self.sbml_network.getNumSpeciesReferenceCurveSegments(species_reference['reaction'], species_reference['reaction_glyph_index'], species_reference['species_reference_glyph_index']) - 1:
+                        species_reference['features']['startSlope'] = math.atan2(
+                            curve_segment['startY'] - curve_segment['endY'],
+                            curve_segment['startX'] - curve_segment['endX'])
+                if cs_index == self.sbml_network.getNumSpeciesReferenceCurveSegments(species_reference['reaction'],
+                                                                                     species_reference[
+                                                                                         'reaction_glyph_index'],
+                                                                                     species_reference[
+                                                                                         'species_reference_glyph_index']) - 1:
                     species_reference['features']['endPoint'] = {'x': curve_segment['endX'], 'y': curve_segment['endY']}
-                    if 'basePoint2X' in list(curve_segment.keys()) and (not curve_segment['endX'] == curve_segment['basePoint2X'] or not curve_segment['endY'] == curve_segment['basePoint2Y']):
-                        species_reference['features']['endSlope'] = math.atan2(curve_segment['endY'] - curve_segment['basePoint2Y'], curve_segment['endX'] - curve_segment['basePoint2X'])
-                    elif 'basePoint1X' in list(curve_segment.keys()) and (not curve_segment['endX'] == curve_segment['basePoint1X'] or not curve_segment['endY'] == curve_segment['basePoint1Y']):
-                        species_reference['features']['endSlope'] = math.atan2(curve_segment['endY'] - curve_segment['basePoint1Y'], curve_segment['endX'] - curve_segment['basePoint1X'])
+                    if 'basePoint2X' in list(curve_segment.keys()) and (
+                            not curve_segment['endX'] == curve_segment['basePoint2X'] or not curve_segment['endY'] ==
+                                                                                             curve_segment[
+                                                                                                 'basePoint2Y']):
+                        species_reference['features']['endSlope'] = math.atan2(
+                            curve_segment['endY'] - curve_segment['basePoint2Y'],
+                            curve_segment['endX'] - curve_segment['basePoint2X'])
+                    elif 'basePoint1X' in list(curve_segment.keys()) and (
+                            not curve_segment['endX'] == curve_segment['basePoint1X'] or not curve_segment['endY'] ==
+                                                                                             curve_segment[
+                                                                                                 'basePoint1Y']):
+                        species_reference['features']['endSlope'] = math.atan2(
+                            curve_segment['endY'] - curve_segment['basePoint1Y'],
+                            curve_segment['endX'] - curve_segment['basePoint1X'])
                     else:
-                        species_reference['features']['endSlope'] = math.atan2(curve_segment['endY'] - curve_segment['startY'], curve_segment['endX'] - curve_segment['startX'])
+                        species_reference['features']['endSlope'] = math.atan2(
+                            curve_segment['endY'] - curve_segment['startY'],
+                            curve_segment['endX'] - curve_segment['startX'])
                 curve.append(curve_segment)
             if curve:
                 species_reference['features']['curve'] = curve
@@ -872,32 +905,32 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
         ellipse_shape_info = {'shape': "ellipse"}
 
         # get fill color
-        if self.sbml_network.isSetGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index):
-            ellipse_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(entity_id, graphical_object_index=graphical_object_index)
+        if self.sbml_network.isSetGeometricShapeFillColor(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['fillColor'] = self.sbml_network.getGeometricShapeFillColor(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index)
 
         # get position cx
-        if self.sbml_network.isSetGeometricShapeCenterX(entity_id, graphical_object_index=graphical_object_index):
-            ellipse_shape_info['cx'] = {'abs': self.sbml_network.getGeometricShapeCenterX(entity_id, graphical_object_index=graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeCenterX(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['cx'] = {'abs': self.sbml_network.getGeometricShapeCenterX(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get position cy
-        if self.sbml_network.isSetGeometricShapeCenterY(entity_id, graphical_object_index=graphical_object_index):
-            ellipse_shape_info['cy'] = {'abs': self.sbml_network.getGeometricShapeCenterY(entity_id, graphical_object_index=graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeCenterY(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['cy'] = {'abs': self.sbml_network.getGeometricShapeCenterY(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get dimension rx
-        if self.sbml_network.isSetGeometricShapeRadiusX(entity_id, graphical_object_index=graphical_object_index):
-            ellipse_shape_info['rx'] = {'abs': self.sbml_network.getGeometricShapeRadiusX(entity_id, graphical_object_index=graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeRadiusX(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['rx'] = {'abs': self.sbml_network.getGeometricShapeRadiusX(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get dimension ry
-        if self.sbml_network.isSetGeometricShapeRadiusY(entity_id, graphical_object_index=graphical_object_index):
-            ellipse_shape_info['ry'] = {'abs': self.sbml_network.getGeometricShapeRadiusY(entity_id, graphical_object_index=graphical_object_index),
+        if self.sbml_network.isSetGeometricShapeRadiusY(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['ry'] = {'abs': self.sbml_network.getGeometricShapeRadiusY(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index),
                                         'rel': 0.0}
 
         # get radius ratio
-        if self.sbml_network.isSetGeometricShapeRatio(entity_id, graphical_object_index=graphical_object_index):
-            ellipse_shape_info['ratio'] = self.sbml_network.getGeometricShapeRatio(entity_id, graphical_object_index=graphical_object_index)
+        if self.sbml_network.isSetGeometricShapeRatio(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index):
+            ellipse_shape_info['ratio'] = self.sbml_network.getGeometricShapeRatio(id=entity_id, geometric_shape_index=geometric_shape_index, graphical_object_index=graphical_object_index)
 
         return ellipse_shape_info
 
