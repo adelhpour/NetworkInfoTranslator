@@ -176,9 +176,9 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                    v_text_anchor, h_text_anchor, layer, sublayer):
         text = {}
         text_font = skia.Font(None, font_size)
-        while text_font.measureText(plain_text) > abs(width):
-            font_size = font_size - 1
-            text_font = skia.Font(None, font_size)
+        # while text_font.measureText(plain_text) > abs(width):
+        #     font_size = font_size - 1
+        #     text_font = skia.Font(None, font_size)
         if font_weight == "bold":
             if font_style == "italic":
                 text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle().BoldItalic()), font_size)
@@ -221,6 +221,8 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
     def export(self, file_name=""):
         if file_name.split(".")[-1] == "pdf":
             self._export_as_pdf(file_name)
+        elif file_name.split(".")[-1] == "svg":
+            self._export_as_svg(file_name)
         else:
             self._export_as(file_name)
 
@@ -348,6 +350,119 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
                                 canvas.translate(-curve['translate']['x'], -curve['translate']['y'])
                         for text in sublayer.texts:
                             canvas.drawTextBlob(text['text'], text['x'], text['y'], text['text-paint'])
+
+    def _export_as_svg(self, file_name):
+        stream = skia.FILEWStream(file_name)
+        x0 = self.graph_info.extents['minX'] - self.padding
+        y0 = self.graph_info.extents['minY'] - self.padding
+        x1 = self.graph_info.extents['maxX'] + self.padding
+        y1 = self.graph_info.extents['maxY'] + self.padding
+        width = int(x1 - x0)
+        height = int(y1 - y0)
+        bounds = skia.Rect(0, 0, width, height)
+        canvas = skia.SVGCanvas.Make(bounds, stream, flags=0)
+        canvas.drawRect(self.background_canvas['rectangle'],
+                        self.background_canvas['fill'])
+        self.sort_layers(self.layers)
+        for layer in self.layers:
+            for sublayer in layer.sub_layers:
+                # Rectangles
+                for simple_rectangle in sublayer.simple_rectangles:
+                    if 'translate' in simple_rectangle:
+                        canvas.translate(
+                            simple_rectangle['translate']['x'],
+                            simple_rectangle['translate']['y']
+                        )
+                        canvas.rotate(simple_rectangle['rotate'])
+                    canvas.drawRect(simple_rectangle["rectangle"],
+                                    simple_rectangle["border"])
+                    canvas.drawRect(simple_rectangle["rectangle"],
+                                    simple_rectangle["fill"])
+                    if 'translate' in simple_rectangle:
+                        canvas.rotate(-simple_rectangle['rotate'])
+                        canvas.translate(
+                            -simple_rectangle['translate']['x'],
+                            -simple_rectangle['translate']['y']
+                        )
+
+                # Rounded rectangles
+                for rr in sublayer.rounded_rectangles:
+                    if 'translate' in rr:
+                        canvas.translate(rr['translate']['x'],
+                                         rr['translate']['y'])
+                        canvas.rotate(rr['rotate'])
+                    canvas.drawRoundRect(rr["rectangle"],
+                                         rr["border-radius"],
+                                         rr["border-radius"],
+                                         rr["border"])
+                    canvas.drawRoundRect(rr["rectangle"],
+                                         rr["border-radius"],
+                                         rr["border-radius"],
+                                         rr["fill"])
+                    if 'translate' in rr:
+                        canvas.rotate(-rr['rotate'])
+                        canvas.translate(-rr['translate']['x'],
+                                         -rr['translate']['y'])
+
+                # Ellipses
+                for e in sublayer.ellipses:
+                    if 'translate' in e:
+                        canvas.translate(e['translate']['x'],
+                                         e['translate']['y'])
+                        canvas.rotate(e['rotate'])
+                    canvas.drawOval(e["rectangle"], e["border"])
+                    canvas.drawOval(e["rectangle"], e["fill"])
+                    if 'translate' in e:
+                        canvas.rotate(-e['rotate'])
+                        canvas.translate(-e['translate']['x'],
+                                         -e['translate']['y'])
+
+                # Polygons
+                for poly in sublayer.polygons:
+                    if 'translate' in poly:
+                        canvas.translate(poly['translate']['x'],
+                                         poly['translate']['y'])
+                        canvas.rotate(poly['rotate'])
+                    path = skia.Path()
+                    path.moveTo(poly['move-to-vertex']['x'],
+                                poly['move-to-vertex']['y'])
+                    for v in poly['line-to-vertices']:
+                        path.lineTo(v['x'], v['y'])
+                    path.close()
+                    canvas.drawPath(path, poly["border"])
+                    canvas.drawPath(path, poly["fill"])
+                    if 'translate' in poly:
+                        canvas.rotate(-poly['rotate'])
+                        canvas.translate(-poly['translate']['x'],
+                                         -poly['translate']['y'])
+
+                # Curves
+                for curve in sublayer.curves:
+                    if 'translate' in curve:
+                        canvas.translate(curve['translate']['x'],
+                                         curve['translate']['y'])
+                        canvas.rotate(curve['rotate'])
+                    for v in curve['vertices']:
+                        path = skia.Path()
+                        path.moveTo(v['startX'], v['startY'])
+                        path.cubicTo(v['basePoint1X'], v['basePoint1Y'],
+                                     v['basePoint2X'], v['basePoint2Y'],
+                                     v['endX'], v['endY'])
+                        canvas.drawPath(path, curve["border"])
+                    if 'translate' in curve:
+                        canvas.rotate(-curve['rotate'])
+                        canvas.translate(-curve['translate']['x'],
+                                         -curve['translate']['y'])
+
+                # Text
+                for text in sublayer.texts:
+                    canvas.drawTextBlob(text['text'],
+                                        text['x'],
+                                        text['y'],
+                                        text['text-paint'])
+
+        del canvas
+        stream.flush()
 
     def _export_as(self, file_name):
         image = self._get_image()
