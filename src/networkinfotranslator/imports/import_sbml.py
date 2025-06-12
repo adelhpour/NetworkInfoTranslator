@@ -43,6 +43,9 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
         for r_index in range(self.sbml_network.getNumReactions()):
             self.add_reaction(self.sbml_network.getReactionId(r_index))
 
+        for i_tg_index in range(self.sbml_network.getNumAllIndependentTextGlyphs()):
+            self.add_independent_text_glyph(self.sbml_network.getIndependentTextGlyphId(i_tg_index))
+
         for a_go_index in range(self.sbml_network.getNumAllAdditionalGraphicalObjects()):
             self.add_additional_graphical_object(self.sbml_network.getAdditionalGraphicalObjectId(a_go_index))
 
@@ -127,6 +130,11 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
                         self.add_empty_species(empty_species_id)
                 reaction['speciesReferences'].append(species_reference)
             self.reactions.append(reaction)
+
+    def add_independent_text_glyph(self, independent_text_glyph_id):
+        independent_text_glyph = {'referenceId': independent_text_glyph_id,
+                    'id': independent_text_glyph_id}
+        self.independent_text_glyphs.append(independent_text_glyph)
 
     def add_additional_graphical_object(self, additional_graphical_object_id):
         graphical_object = self.extract_go_object_features(additional_graphical_object_id, 0)
@@ -261,6 +269,9 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
             if curve:
                 species_reference['features']['curve'] = curve
                 species_reference['features']['graphicalCurve'] = self.extract_species_reference_curve_features(species_reference['reaction'], species_reference['reaction_glyph_index'], species_reference['species_reference_glyph_index'])
+
+    def extract_independent_text_glyph_features(self, independent_text_glyph):
+        independent_text_glyph.update(self.extract_go_text_features(independent_text_glyph['referenceId'], 0)[0])
 
     def extract_additional_graphical_object_features(self, additional_graphical_object):
         if additional_graphical_object['referenceId']:

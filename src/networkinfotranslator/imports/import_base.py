@@ -3,6 +3,7 @@ class NetworkInfoImportBase:
         self.compartments = []
         self.species = []
         self.reactions = []
+        self.independent_text_glyphs = []
         self.additional_graphical_objects = []
         self.colors = []
         self.gradients = []
@@ -124,6 +125,10 @@ class NetworkInfoImportBase:
                 species_references = reaction['speciesReferences']
                 for species_reference in species_references:
                     self.extract_species_reference_features(species_reference)
+
+        # independent text glyphs
+        for independent_text_glyph in self.independent_text_glyphs:
+            self.extract_independent_text_glyph_features(independent_text_glyph)
 
         # additional graphical objects
         for additional_graphical_object in self.additional_graphical_objects:

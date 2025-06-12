@@ -28,6 +28,10 @@ class NetworkInfoExportBase:
         for r in graph_info.reactions:
             self.add_reaction(r)
 
+        # independent text glyphs
+        for itg in graph_info.independent_text_glyphs:
+            self.add_independent_text_glyph(itg)
+
         # additional graphical objects
         for go in graph_info.additional_graphical_objects:
             self.add_additional_graphical_object(go)
@@ -42,6 +46,9 @@ class NetworkInfoExportBase:
         pass
 
     def add_reaction(self, reaction):
+        pass
+
+    def add_independent_text_glyph(self, independent_text_glyph):
         pass
 
     def add_additional_graphical_object(self, additional_graphical_object):

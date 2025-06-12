@@ -17,6 +17,7 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
         self.species_text_layer = 6
         self.additional_graphical_object_layer = 7
         self.additional_graphical_object_text_layer = 8
+        self.independent_text_glyph_layer = 9
 
     def reset(self):
         super().reset()
@@ -71,6 +72,10 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
 
             # line endings
             self.add_line_endings_to_scene(species_reference['features'])
+
+    def add_independent_text_glyph(self, independent_text_glyph):
+        if 'features' in list(independent_text_glyph.keys()):
+            self.add_text_to_scene(independent_text_glyph['features'], layer=self.independent_text_glyph_layer)
 
     def add_additional_graphical_object(self, additional_graphical_object):
         # additional graphical object
