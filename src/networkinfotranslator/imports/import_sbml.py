@@ -346,6 +346,10 @@ class NetworkInfoImportFromSBMLModel(NetworkInfoImportBase):
 
     def extract_line_ending_features(self, line_ending):
         line_ending['features'] = {}
+        line_ending['features']['enableRotation'] = True
+        if self.sbml_network.isSetLineEndingEnableRotationalMapping(line_ending['id']):
+            line_ending['features']['enableRotation'] = self.sbml_network.getLineEndingEnableRotationalMapping(
+                line_ending['id'])
         line_ending['features']['boundingBox'] = {'x': self.sbml_network.getLineEndingBoundingBoxX(line_ending['id']),
                                                   'y': self.sbml_network.getLineEndingBoundingBoxY(line_ending['id']),
                                                   'width': self.sbml_network.getLineEndingBoundingBoxWidth(line_ending['id']),
