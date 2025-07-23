@@ -402,7 +402,8 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                             and not line_ending['features']['enableRotation']:
                         self.add_graphical_shape_to_scene(line_ending['features'],
                                                           offset_x=features['startPoint']['x'],
-                                                          offset_y=features['startPoint']['y'], layer=self.line_ending_layer)
+                                                          offset_y=features['startPoint']['y'],
+                                                          slope=0, layer=self.line_ending_layer)
                     else:
                         self.add_graphical_shape_to_scene(line_ending['features'],
                                                           offset_x=features['startPoint']['x'],
@@ -415,9 +416,10 @@ class NetworkInfoExportToFigureBase(NetworkInfoExportBase):
                 if line_ending and 'features' in list(line_ending.keys()):
                     if 'enableRotation' in list(line_ending['features'].keys()) \
                             and not line_ending['features']['enableRotation']:
-                        self.add_graphical_shape_to_scene(ax, line_ending['features'],
+                        self.add_graphical_shape_to_scene(line_ending['features'],
                                                           offset_x=features['endPoint']['x'],
-                                                          offset_y=features['endPoint']['y'], layer=self.line_ending_layer)
+                                                          offset_y=features['endPoint']['y'],
+                                                          slope=0, layer=self.line_ending_layer)
                     else:
                         self.add_graphical_shape_to_scene(line_ending['features'],
                                                           offset_x=features['endPoint']['x'],
