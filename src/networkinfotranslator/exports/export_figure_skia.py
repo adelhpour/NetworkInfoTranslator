@@ -180,15 +180,15 @@ class NetworkInfoExportToSkia(NetworkInfoExportToFigureBase):
         #     font_size = font_size - 1
         #     text_font = skia.Font(None, font_size)
         if font_weight == "bold":
-            weight = skia.FontStyle.kBold_Weight
+            if font_style == "italic":
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle().BoldItalic()), font_size)
+            else:
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle().Bold()), font_size)
         else:
-            weight = skia.FontStyle.kNormal_Weight
-        if font_style == "italic":
-            slant = skia.FontStyle.kItalic_Slant
-        else:
-            slant = skia.FontStyle.kUpright_Slant
-        font_style_obj = skia.FontStyle(weight, skia.FontStyle.kNormal_Width, slant)
-        text_font = skia.Font(skia.Typeface(font_family, font_style_obj), font_size)
+            if font_style == "italic":
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle.Italic()), font_size)
+            else:
+                text_font = skia.Font(skia.Typeface(font_family, skia.FontStyle.Normal()), font_size)
         text_width = text_font.measureText(plain_text)
         text_height = text_font.getSize()
         text['text-paint'] = self._create_text_paint(font_color)
